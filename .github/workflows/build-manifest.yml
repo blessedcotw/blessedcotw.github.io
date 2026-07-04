@@ -1,0 +1,36 @@
+name: Build library manifest
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'library/**.txt'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate library-manifest.json
+        run: |
+          cd library
+          python3 -c "
+          import json, os
+          files = sorted(f for f in os.listdir('.') if f.lower().endswith('.txt'))
+          with open('library-manifest.json', 'w', encoding='utf-8') as out:
+              json.dump(files, out, ensure_ascii=False, indent=2)
+          print(f'Wrote {len(files)} entries to library-manifest.json')
+          "
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add library/library-manifest.json
+          git diff --cached --quiet || git commit -m "chore: update library-manifest.json"
+          git push

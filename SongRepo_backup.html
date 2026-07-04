@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Perpustakaan Lagu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --paper: #F6F1E4;
+    --paper-alt: #EFE7D3;
+    --ink: #241F18;
+    --ink-soft: #5B5346;
+    --indigo: #2C3A54;
+    --indigo-deep: #1D2740;
+    --gold: #B4893F;
+    --sage: #6E7C5C;
+    --rule: #D8CDB2;
+    --red: #A34435;
+    --white: #FFFDF8;
+    --radius: 3px;
+    --shadow: 0 1px 0 rgba(36,31,24,.06), 0 8px 24px -12px rgba(36,31,24,.25);
+  }
+  *{ box-sizing: border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    font-family:'Inter', sans-serif;
+    background:
+      radial-gradient(1200px 500px at 10% -10%, #fbf7ec 0%, transparent 60%),
+      var(--paper);
+    color: var(--ink);
+    min-height:100vh;
+  }
+  ::selection{ background: var(--gold); color: var(--white); }
+  a{ color:inherit; }
+
+  header.top{
+    display:flex; align-items:baseline; justify-content:space-between;
+    padding: 20px 28px 12px;
+    border-bottom: 1px solid var(--rule);
+    flex-wrap:wrap; gap:10px;
+  }
+  .brand{ display:flex; align-items:baseline; gap:12px; }
+  .brand .mark{
+    font-family:'Fraunces', serif; font-weight:700; font-size:24px; letter-spacing:-.01em;
+    color: var(--indigo-deep);
+  }
+  .brand .mark em{ font-style:italic; color: var(--gold); }
+  .brand .sub{ font-size:12px; color: var(--ink-soft); letter-spacing:.02em; }
+  .status{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; color: var(--ink-soft);
+  }
+
+  /* ---------- 3-pane layout ---------- */
+  .app{
+    display:grid;
+    grid-template-columns: 330px 380px 1fr;
+    align-items:start;
+  }
+  @media (max-width: 1180px){ .app{ grid-template-columns: 300px 1fr; } .preview-pane{ grid-column: 1 / -1; } }
+  @media (max-width: 760px){ .app{ grid-template-columns: 1fr; } }
+
+  .pane{ height: calc(100vh - 61px); overflow-y:auto; }
+  .library-pane{ padding: 18px 18px 60px; border-right: 1px solid var(--rule); position:sticky; top:0; }
+  .cart-pane{ padding: 18px 20px 40px; border-right: 1px solid var(--rule); position:sticky; top:0; background: var(--paper-alt); }
+  .preview-pane{ padding: 18px 24px 60px; position:sticky; top:0; }
+  @media (max-width: 1180px){ .library-pane, .cart-pane, .preview-pane{ position:static; height:auto; } }
+  @media (max-width: 760px){ .pane{ height:auto; border-right:none; border-bottom:1px solid var(--rule); } }
+
+  /* ---------- Library: search + tabs + list ---------- */
+  .manual-box{
+    border:1px dashed var(--rule); border-radius:var(--radius); padding:14px 16px; margin-bottom:16px;
+    background: var(--white); font-size:12.5px; color: var(--ink-soft);
+  }
+  .manual-box strong{ color: var(--ink); display:block; margin-bottom:8px; }
+
+  .search{
+    display:flex; align-items:center; gap:8px;
+    background: var(--white); border:1px solid var(--rule); border-radius: var(--radius);
+    padding: 9px 12px; margin-bottom:12px;
+  }
+  .search input{
+    border:none; outline:none; background:none; font-family:'Inter'; font-size:14px; width:100%; color:var(--ink);
+  }
+  .search .hint-small{ font-size:10.5px; color:var(--ink-soft); margin: -6px 0 12px 2px; font-family:'IBM Plex Mono',monospace; }
+
+  .tabs{ display:flex; gap:6px; margin-bottom:12px; }
+  .tab{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.03em; text-transform:uppercase;
+    padding:7px 12px; border:1px solid var(--rule); border-radius: 999px;
+    background: var(--white); cursor:pointer; color: var(--ink-soft);
+  }
+  .tab.active{ background: var(--indigo-deep); border-color: var(--indigo-deep); color: var(--white); }
+  .tab .count{ opacity:.65; margin-left:3px; }
+
+  .song-list{ display:flex; flex-direction:column; border-top:1px solid var(--rule); }
+  .song-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding: 11px 4px; border-bottom:1px solid var(--rule); cursor:pointer;
+  }
+  .song-row:hover .song-title{ color: var(--gold); }
+  .song-row .song-title{
+    font-family:'Fraunces', serif; font-weight:600; font-size:15px; color: var(--indigo-deep);
+  }
+  .group-tag{
+    font-family:'IBM Plex Mono', monospace; font-size:9.5px; letter-spacing:.04em; text-transform:uppercase;
+    padding:1px 6px; border-radius:3px; margin-left:7px; vertical-align:1px;
+  }
+  .group-tag.lagu{ background: var(--paper-alt); color: var(--ink-soft); }
+  .group-tag.animasi{ background: var(--sage); color: var(--white); }
+  .song-row .song-meta{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; color: var(--ink-soft); white-space:nowrap;
+  }
+  .empty-state{ padding: 40px 10px; text-align:center; color: var(--ink-soft); }
+  .empty-state h3{ font-family:'Fraunces',serif; color: var(--indigo-deep); margin:0 0 6px; font-size:16px; }
+
+  .btn{
+    font-family:'Inter'; font-size:13px; font-weight:600; cursor:pointer;
+    border-radius: var(--radius); border:1px solid var(--indigo-deep); background: var(--indigo-deep); color:var(--white);
+    padding:9px 16px;
+  }
+  .btn.secondary{ background:none; color:var(--indigo-deep); }
+  .btn.ghost{ background:none; color:var(--ink-soft); border-color:var(--rule); }
+  .btn.dashed{ background:none; color:var(--indigo); border:1px dashed var(--rule); width:100%; }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; }
+
+  /* ---------- Cart pane ---------- */
+  .cart-pane h2.title{ font-family:'Fraunces', serif; font-size:19px; margin: 0 0 4px; color: var(--indigo-deep); }
+  .cart-pane .sub{ font-size:11.5px; color:var(--ink-soft); margin-bottom:14px; }
+  .field{ margin-bottom:10px; }
+  .field label{ display:block; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); margin-bottom:4px; font-family:'IBM Plex Mono',monospace; }
+  .field input{
+    width:100%; padding:8px 10px; border:1px solid var(--rule); border-radius: var(--radius);
+    font-family:'Inter'; font-size:14px; background: var(--white);
+  }
+
+  .cart-list{ margin: 14px 0; display:flex; flex-direction:column; gap:7px; }
+  .cart-item{ background: var(--white); border:1px solid var(--rule); border-radius: var(--radius); padding:10px 12px; cursor:grab; }
+  .cart-item.dragging{ opacity:.4; }
+  .cart-item .ci-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .cart-item .num{ font-family:'IBM Plex Mono',monospace; color: var(--gold); font-size:11.5px; margin-right:5px; }
+  .cart-item h4{ margin:0; font-family:'Fraunces',serif; font-size:14.5px; color:var(--indigo-deep); font-weight:600; }
+  .cart-item .chips{ margin-top:5px; display:flex; flex-wrap:wrap; gap:4px; }
+  .cart-item .chip{
+    font-size:10px; font-family:'IBM Plex Mono',monospace; background:var(--paper-alt); color: var(--ink-soft);
+    padding:1px 6px; border-radius:3px; text-transform:uppercase;
+  }
+  .cart-item .ci-actions{ display:flex; gap:4px; flex-shrink:0; }
+  .icon-btn{ border:none; background:none; cursor:pointer; font-size:13px; color: var(--ink-soft); padding:2px 4px; }
+  .icon-btn:hover{ color: var(--indigo-deep); }
+  .icon-btn.danger:hover{ color: var(--red); }
+
+  .cart-item.break-item{
+    background: transparent; border: none; border-top:1px dashed var(--gold); border-bottom:1px dashed var(--gold);
+    padding: 8px 4px; display:flex; align-items:center; gap:8px;
+  }
+  .cart-item.break-item input{
+    flex:1; border:none; background:none; font-family:'IBM Plex Mono',monospace; text-transform:uppercase;
+    font-size:11.5px; letter-spacing:.06em; color: var(--gold); outline:none; padding:2px 0;
+  }
+
+  .cart-empty{
+    border:1px dashed var(--rule); border-radius:var(--radius); padding:20px 12px; text-align:center;
+    color: var(--ink-soft); font-size:12.5px;
+  }
+  .export-btn{ width:100%; padding:12px; font-size:14px; margin-top:10px; max-width:620px;}
+
+  /* ---------- Preview pane ---------- */
+  .preview-pane h2.title{ font-family:'Fraunces', serif; font-size:19px; margin: 0 0 4px; color: var(--indigo-deep); }
+  .preview-pane .sub{ font-size:11.5px; color:var(--ink-soft); margin-bottom:16px; }
+  .preview-sheet{
+    background: var(--white); border:1px solid var(--rule); box-shadow: var(--shadow);
+    padding: 26px 30px; max-width: 620px;
+  }
+  .preview-sheet .ph-title{ font-family:'Fraunces',serif; font-weight:700; font-size:17px; text-align:center; color:var(--indigo-deep); }
+  .preview-sheet .ph-date{ text-align:center; font-size:12.5px; color: var(--ink-soft); margin-bottom:20px; }
+  .preview-song{ margin-bottom:18px; }
+  .preview-song h4{ font-family:'Fraunces',serif; font-size:15.5px; margin: 0 0 6px; color: var(--indigo-deep); }
+  .preview-sec{ margin-bottom:8px; }
+  .preview-sec .lbl{ font-family:'IBM Plex Mono',monospace; font-size:10px; text-transform:uppercase; color: var(--sage); letter-spacing:.05em; }
+  .preview-sec .txt{ font-size:13px; line-height:1.55; color: var(--ink); }
+  .preview-break{
+    text-align:center; font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase;
+    letter-spacing:.08em; color: var(--gold); margin: 20px 0; border-top:1px dashed var(--rule); border-bottom:1px dashed var(--rule);
+    padding: 6px 0;
+  }
+
+  /* ---------- Editor overlay ---------- */
+  .overlay{ position:fixed; inset:0; background: rgba(29,39,64,.45); display:flex; align-items:flex-start; justify-content:center; padding: 5vh 20px; z-index: 50; overflow-y:auto; }
+  .overlay.hidden{ display:none; }
+  .editor{ background: var(--white); width:100%; max-width:560px; border-radius: 4px; box-shadow: 0 30px 60px -20px rgba(0,0,0,.4); overflow:hidden; }
+  .editor .ehead{ padding: 20px 24px 14px; border-bottom:1px solid var(--rule); display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .editor .ehead h2{ font-family:'Fraunces', serif; font-size:21px; margin:0 0 4px; color: var(--indigo-deep); }
+  .editor .ehead .eyebrow{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color: var(--ink-soft); }
+  .close-x{ background:none; border:none; font-size:20px; cursor:pointer; color: var(--ink-soft); line-height:1; padding:2px 6px; }
+  .ebody{ padding: 16px 24px 8px; max-height: 50vh; overflow-y:auto; }
+  .ebody p.hint{ font-size:12.5px; color:var(--ink-soft); margin:0 0 12px; }
+  .sec-row{ display:flex; align-items:flex-start; gap:10px; border:1px solid var(--rule); border-radius: var(--radius); padding:9px 12px; margin-bottom:8px; background: var(--paper); cursor: grab; }
+  .sec-row.dragging{ opacity:.4; }
+  .sec-row .handle{ color: var(--rule); font-family:monospace; letter-spacing:2px; user-select:none; }
+  .sec-row label{ flex:1; font-size:13.5px; display:flex; align-items:flex-start; gap:10px; cursor:pointer; }
+  .sec-row .tagchip{ font-family:'IBM Plex Mono', monospace; font-size:10px; text-transform:uppercase; background:var(--indigo-deep); color:var(--white); padding:2px 7px; border-radius:3px; flex-shrink:0; }
+  .sec-row .preview{ font-size:11.5px; color: var(--ink-soft); line-height: 1.5; }
+  .efoot{ padding: 14px 24px 22px; display:flex; justify-content:flex-end; gap:10px; border-top:1px solid var(--rule); }
+
+  .toast{
+    position: fixed; bottom: 24px; left:50%; transform: translateX(-50%);
+    background: var(--indigo-deep); color: var(--white); padding:10px 18px; border-radius: var(--radius);
+    font-size:13px; box-shadow: var(--shadow); z-index:100; opacity:0; pointer-events:none; transition: opacity .2s ease;
+  }
+  .toast.show{ opacity:1; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <div class="mark">Perpustakaan <em>Lagu</em></div>
+    <div class="sub">Susun daftar pujian, atur ulang bait, unduh PDF</div>
+  </div>
+  <div class="status" id="scanStatus">memindai folder…</div>
+</header>
+
+<div class="app">
+  <!-- LEFT: library -->
+  <main class="pane library-pane">
+    <div id="manualBox" class="manual-box" style="display:none;">
+      <strong>Tidak bisa memindai folder secara otomatis.</strong>
+      Pilih file .txt lagu secara manual (bisa pilih banyak sekaligus).<br><br>
+      <input type="file" id="manualInput" accept=".txt" multiple>
+    </div>
+
+    <div class="search">
+      <span>🔎</span>
+      <input type="text" id="searchInput" placeholder="Cari judul atau lirik lagu…">
+    </div>
+    <!--div class="hint-small">pencarian juga menelusuri isi lirik</div-->
+
+    <div class="tabs" id="tabs">
+      <div class="tab active" data-tab="lagu">Lagu <span class="count" id="countLagu">0</span></div>
+      <div class="tab" data-tab="animasi">Animasi <span class="count" id="countAnimasi">0</span></div>
+    </div>
+
+    <div class="song-list" id="songList"></div>
+  </main>
+
+  <!-- MIDDLE: daftar pujian -->
+  <aside class="pane cart-pane">
+    <h2 class="title">Daftar Pujian</h2>
+    <div class="sub">Klik lagu di kiri untuk menambah. Seret untuk atur urutan.</div>
+
+    <div class="field">
+      <label for="eventName">Nama Ibadah</label>
+      <input type="text" id="eventName" placeholder='mis. "Ibadah Raya Minggu"'>
+    </div>
+    <div class="field">
+      <label for="eventDate">Tanggal</label>
+      <input type="date" id="eventDate">
+    </div>
+
+    <div class="cart-list" id="cartList"></div>
+
+    <button class="btn dashed" id="addBreakBtn">+ Tambah Break / Pembatas Sesi</button>
+  </aside>
+
+  <!-- RIGHT: preview -->
+  <section class="pane preview-pane">
+    <h2 class="title">Pratinjau</h2>
+    <div class="sub">Tampilan lagu-lagu sesuai urutan di daftar pujian.</div>
+    <div class="preview-sheet" id="previewSheet"></div>
+	<button class="btn export-btn" id="exportBtn" disabled>Unduh PDF</button>
+  </section>
+</div>
+
+<!-- Editor overlay -->
+<div class="overlay hidden" id="overlay">
+  <div class="editor">
+    <div class="ehead">
+      <div>
+        <div class="eyebrow" id="editorGroupLabel">Lagu</div>
+        <h2 id="editorTitle">Judul Lagu</h2>
+      </div>
+      <button class="close-x" id="closeEditor">✕</button>
+    </div>
+    <div class="ebody">
+      <p class="hint">Centang bagian yang ingin dipakai. Seret <span class="handle">⠿⠿</span> untuk mengubah urutan.</p>
+      <div id="sectionList"></div>
+    </div>
+    <div class="efoot">
+      <button class="btn ghost" id="cancelEditor">Batal</button>
+      <button class="btn" id="saveEditor">Tambah ke Daftar Pujian</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================= STATE ============================= */
+const state = {
+  songs: [],
+  activeTab: 'lagu',
+  search: '',
+  cart: [],  // items: {type:'song', cartId, songId, title, group, sections:[{tag,label,lines}]}
+             //     or {type:'break', cartId, label}
+  editing: { songId: null, cartId: null, working: [] }
+};
+let dragSrcIndex = null;
+const MONTHS_ID = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+/* ============================= UTIL ============================= */
+function uid(){ return Math.random().toString(36).slice(2,10); }
+function cap(tag){ return tag.charAt(0).toUpperCase() + tag.slice(1).toLowerCase(); }
+function isAnimasiFile(filename){ return /animasi/i.test(filename); }
+function flattenLines(lines){ return lines.filter(l => l.trim() !== '').join(' / '); }
+function linesToHtml(lines){
+  return lines.filter(l => l.trim() !== '').map(l => escapeHtml(l)).join('<br>');
+}
+function cleanTitle(raw){
+  let t = (raw || '').replace(/_/g, ' ').replace(/[()]/g, ' ');
+  t = t.split(/\s+/).filter(w => w && !/^(decoded|animasi)$/i.test(w)).join(' ');
+  t = t.replace(/\s+/g, ' ').trim();
+  t = t.replace(/^-+\s*/, '').replace(/\s*-+$/, '').trim();
+  return t || raw;
+}
+function escapeHtml(str){
+  return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function formatDateID(iso){
+  if(!iso) return '';
+  const [y,m,d] = iso.split('-').map(Number);
+  if(!y || !m || !d) return iso;
+  return `${d} ${MONTHS_ID[m-1]} ${y}`;
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._h);
+  showToast._h = setTimeout(()=> t.classList.remove('show'), 2200);
+}
+
+/* ============================= PARSING ============================= */
+function parseSong(filename, text){
+  const rawLines = text.replace(/\r/g,'').split('\n');
+  let title = filename.replace(/\.txt$/i,'');
+  let startIdx = 0;
+  if(rawLines[0] && /^title\s*:/i.test(rawLines[0])){
+    title = rawLines[0].replace(/^title\s*:/i,'').trim() || title;
+    startIdx = 1;
+  }
+  title = cleanTitle(title);
+  const sections = [];
+  let current = null;
+  const counts = {};
+  for(let i = startIdx; i < rawLines.length; i++){
+    const line = rawLines[i];
+    const m = line.match(/^\s*\[([^\]]+)\]\s*$/);
+    if(m){
+      const tag = m[1].trim().toUpperCase();
+      counts[tag] = (counts[tag] || 0) + 1;
+      const label = counts[tag] > 1 ? `${cap(tag)} ${counts[tag]}` : cap(tag);
+      current = { tag, label, lines: [] };
+      sections.push(current);
+    } else if(current){
+      current.lines.push(line);
+    }
+  }
+  sections.forEach(s => {
+    while(s.lines.length && s.lines[0].trim() === '') s.lines.shift();
+    while(s.lines.length && s.lines[s.lines.length-1].trim() === '') s.lines.pop();
+  });
+  return { title, sections: sections.filter(s => s.lines.length > 0) };
+}
+
+function buildSongRecord(filename, text){
+  const parsed = parseSong(filename, text);
+  const searchText = (parsed.title + ' ' + parsed.sections.flatMap(s => s.lines).join(' ')).toLowerCase();
+  return {
+    id: uid(),
+    filename,
+    title: parsed.title,
+    group: isAnimasiFile(filename) ? 'animasi' : 'lagu',
+    sections: parsed.sections,
+    searchText
+  };
+}
+
+/* ============================= SCANNING ============================= */
+async function scanLibrary(){
+  const statusEl = document.getElementById('scanStatus');
+  let filenames = [];
+
+  try{
+    const res = await fetch('./library/library-manifest.json', { cache: 'no-store' });
+    if(res.ok){
+      const data = await res.json();
+      if(Array.isArray(data)) filenames = data.filter(f => /\.txt$/i.test(f));
+    }
+  }catch(e){ /* ignore */ }
+
+  if(filenames.length === 0){
+    try{
+      const res = await fetch('./library/', { cache: 'no-store' });
+      if(res.ok){
+        const html = await res.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const anchors = Array.from(doc.querySelectorAll('a[href]'));
+        filenames = anchors
+          .map(a => decodeURIComponent(a.getAttribute('href')))
+          .filter(href => /\.txt$/i.test(href) && !href.startsWith('http') && !href.includes('/'))
+          .filter((v,i,arr) => arr.indexOf(v) === i);
+      }
+    }catch(e){ /* ignore */ }
+  }
+
+  if(filenames.length === 0){
+    statusEl.textContent = 'pemindaian otomatis tidak tersedia';
+    document.getElementById('manualBox').style.display = 'block';
+    return;
+  }
+
+  statusEl.textContent = `memuat ${filenames.length} file…`;
+  const songs = [];
+  for(const fname of filenames){
+    try{
+      const r = await fetch('./library/' + encodeURIComponent(fname));
+      const text = await r.text();
+      songs.push(buildSongRecord(fname, text));
+    }catch(e){ console.warn('Gagal memuat', fname, e); }
+  }
+  state.songs = songs;
+  statusEl.textContent = `${songs.length} lagu dimuat`;
+  renderSongList();
+  renderTabCounts();
+}
+
+document.getElementById('manualInput').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files || []);
+  if(files.length === 0) return;
+  const songs = [];
+  for(const file of files){
+    const text = await file.text();
+    songs.push(buildSongRecord(file.name, text));
+  }
+  state.songs = songs;
+  document.getElementById('scanStatus').textContent = `${songs.length} lagu dimuat (manual)`;
+  document.getElementById('manualBox').style.display = 'none';
+  renderSongList();
+  renderTabCounts();
+});
+
+/* ============================= RENDER: LIBRARY (list view) ============================= */
+function renderTabCounts(){
+  document.getElementById('countLagu').textContent = state.songs.filter(s=>s.group==='lagu').length;
+  document.getElementById('countAnimasi').textContent = state.songs.filter(s=>s.group==='animasi').length;
+}
+
+function renderSongList(){
+  const wrap = document.getElementById('songList');
+  const q = state.search.trim().toLowerCase();
+  const searching = !!q;
+  const list = state.songs
+    .filter(s => searching || s.group === state.activeTab)
+    .filter(s => !q || s.title.toLowerCase().includes(q) || s.searchText.includes(q));
+
+  if(list.length === 0){
+    wrap.innerHTML = `<div class="empty-state">
+      <h3>Belum ada lagu</h3>
+      <p>${state.songs.length === 0 ? 'Menunggu file dimuat dari folder…' : 'Tidak ada lagu yang cocok.'}</p>
+    </div>`;
+    return;
+  }
+
+  wrap.innerHTML = list.map(s => `
+    <div class="song-row" data-song-id="${s.id}">
+      <span class="song-title">${escapeHtml(s.title)}<span class="group-tag ${s.group}">${s.group === 'animasi' ? 'Animasi' : 'Lagu'}</span></span>
+      <span class="song-meta">${s.sections.length} bagian</span>
+    </div>
+  `).join('');
+
+  wrap.querySelectorAll('.song-row').forEach(row => {
+    row.addEventListener('click', () => openEditor(row.dataset.songId, null));
+  });
+}
+
+document.getElementById('tabs').addEventListener('click', (e) => {
+  const tab = e.target.closest('.tab');
+  if(!tab) return;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  state.activeTab = tab.dataset.tab;
+  renderSongList();
+});
+
+document.getElementById('searchInput').addEventListener('input', (e) => {
+  state.search = e.target.value;
+  renderSongList();
+});
+
+/* ============================= EDITOR ============================= */
+function openEditor(songId, cartId){
+  const song = state.songs.find(s => s.id === songId);
+  if(!song) return;
+
+  let working;
+  if(cartId){
+    const item = state.cart.find(c => c.cartId === cartId);
+    const chosenLabels = item.sections.map(s => s.label);
+    const rest = song.sections.filter(s => !chosenLabels.includes(s.label));
+    working = [
+      ...item.sections.map(s => ({...s, checked: true})),
+      ...rest.map(s => ({...s, checked: false}))
+    ];
+  } else {
+    working = song.sections.map(s => ({...s, checked: true}));
+  }
+
+  state.editing = { songId, cartId, working };
+  document.getElementById('editorTitle').textContent = song.title;
+  document.getElementById('editorGroupLabel').textContent = song.group === 'animasi' ? 'Lagu dengan Animasi' : 'Lagu';
+  renderSectionList();
+  document.getElementById('overlay').classList.remove('hidden');
+  document.getElementById('saveEditor').textContent = cartId ? 'Simpan Perubahan' : 'Tambah ke Daftar Pujian';
+}
+
+function renderSectionList(){
+  const wrap = document.getElementById('sectionList');
+  const working = state.editing.working;
+  wrap.innerHTML = working.map((s, idx) => `
+    <div class="sec-row" draggable="true" data-idx="${idx}">
+      <span class="handle">⠿⠿</span>
+      <label>
+        <input type="checkbox" data-idx="${idx}" ${s.checked ? 'checked' : ''}>
+        <span class="tagchip">${s.label}</span>
+        <span class="preview">${linesToHtml(s.lines)}</span>
+      </label>
+    </div>
+  `).join('');
+
+  wrap.querySelectorAll('input[type=checkbox]').forEach(cb => {
+    cb.addEventListener('change', (e) => {
+      const idx = Number(e.target.dataset.idx);
+      state.editing.working[idx].checked = e.target.checked;
+    });
+  });
+
+  wrap.querySelectorAll('.sec-row').forEach(row => {
+    row.addEventListener('dragstart', () => {
+      dragSrcIndex = Number(row.dataset.idx);
+      row.classList.add('dragging');
+    });
+    row.addEventListener('dragend', () => row.classList.remove('dragging'));
+    row.addEventListener('dragover', (e) => e.preventDefault());
+    row.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const targetIdx = Number(row.dataset.idx);
+      if(dragSrcIndex === null || dragSrcIndex === targetIdx) return;
+      const arr = state.editing.working;
+      const [moved] = arr.splice(dragSrcIndex, 1);
+      arr.splice(targetIdx, 0, moved);
+      dragSrcIndex = null;
+      renderSectionList();
+    });
+  });
+}
+
+document.getElementById('closeEditor').addEventListener('click', closeEditor);
+document.getElementById('cancelEditor').addEventListener('click', closeEditor);
+document.getElementById('overlay').addEventListener('click', (e) => {
+  if(e.target.id === 'overlay') closeEditor();
+});
+function closeEditor(){
+  document.getElementById('overlay').classList.add('hidden');
+  state.editing = { songId: null, cartId: null, working: [] };
+}
+
+document.getElementById('saveEditor').addEventListener('click', () => {
+  const { songId, cartId, working } = state.editing;
+  const song = state.songs.find(s => s.id === songId);
+  const chosen = working.filter(s => s.checked).map(({tag, label, lines}) => ({tag, label, lines}));
+
+  if(chosen.length === 0){
+    showToast('Pilih minimal satu bagian lagu.');
+    return;
+  }
+
+  if(cartId){
+    const item = state.cart.find(c => c.cartId === cartId);
+    item.sections = chosen;
+    showToast('Perubahan disimpan.');
+  } else {
+    state.cart.push({
+      type: 'song',
+      cartId: uid(),
+      songId: song.id,
+      title: song.title,
+      group: song.group,
+      sections: chosen
+    });
+    showToast('Ditambahkan ke daftar pujian.');
+  }
+  closeEditor();
+  renderCart();
+  renderPreview();
+});
+
+/* ============================= CART (daftar pujian) ============================= */
+document.getElementById('addBreakBtn').addEventListener('click', () => {
+  state.cart.push({ type: 'break', cartId: uid(), label: '' });
+  renderCart();
+  renderPreview();
+});
+
+function renderCart(){
+  const wrap = document.getElementById('cartList');
+  const exportBtn = document.getElementById('exportBtn');
+
+  if(state.cart.length === 0){
+    wrap.innerHTML = `<div class="cart-empty">Belum ada lagu dipilih.<br>Klik sebuah lagu di sebelah kiri untuk mulai menyusun.</div>`;
+    exportBtn.disabled = true;
+    return;
+  }
+  exportBtn.disabled = !state.cart.some(i => i.type === 'song');
+
+  let songNum = 0;
+  wrap.innerHTML = state.cart.map((item, idx) => {
+    if(item.type === 'break'){
+      return `
+        <div class="cart-item break-item" draggable="true" data-idx="${idx}">
+          <span class="icon-btn" style="cursor:grab;">⠿⠿</span>
+          <input type="text" value="${escapeHtml(item.label)}" data-break-idx="${idx}" placeholder="Sesi Baru">
+          <button class="icon-btn danger" data-action="remove" data-idx="${idx}" title="Hapus">✕</button>
+        </div>`;
+    }
+    songNum++;
+return `
+      <div class="cart-item" draggable="true" data-idx="${idx}">
+        <div class="ci-top">
+          <div style="display:flex; align-items:flex-start; gap:8px;">
+            <span class="icon-btn" style="cursor:grab; margin-top:-1px;">⠿⠿</span>
+            <h4><span class="num">${songNum}.</span>${escapeHtml(item.title)}</h4>
+          </div>
+          <div class="ci-actions">
+            <button class="icon-btn" data-action="edit" data-idx="${idx}" title="Atur ulang bagian">✎</button>
+            <button class="icon-btn danger" data-action="remove" data-idx="${idx}" title="Hapus">✕</button>
+          </div>
+        </div>
+        <div class="chips" style="margin-left:26px;">${item.sections.map(s => `<span class="chip">${s.label}</span>`).join('')}</div>
+      </div>`;
+  }).join('');
+
+  wrap.querySelectorAll('input[data-break-idx]').forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      const idx = Number(e.target.dataset.breakIdx);
+      state.cart[idx].label = e.target.value;
+      renderPreview();
+    });
+  });
+  wrap.querySelectorAll('[data-action=edit]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = state.cart[Number(btn.dataset.idx)];
+      openEditor(item.songId, item.cartId);
+    });
+  });
+  wrap.querySelectorAll('[data-action=remove]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.cart.splice(Number(btn.dataset.idx), 1);
+      renderCart();
+      renderPreview();
+    });
+  });
+  wrap.querySelectorAll('.cart-item').forEach(row => {
+    row.addEventListener('dragstart', (e) => {
+      if(e.target.tagName === 'INPUT') { e.preventDefault(); return; }
+      dragSrcIndex = Number(row.dataset.idx);
+      row.classList.add('dragging');
+    });
+    row.addEventListener('dragend', () => row.classList.remove('dragging'));
+    row.addEventListener('dragover', (e) => e.preventDefault());
+    row.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const targetIdx = Number(row.dataset.idx);
+      if(dragSrcIndex === null || dragSrcIndex === targetIdx) return;
+      const [moved] = state.cart.splice(dragSrcIndex, 1);
+      state.cart.splice(targetIdx, 0, moved);
+      dragSrcIndex = null;
+      renderCart();
+      renderPreview();
+    });
+  });
+}
+
+document.getElementById('eventName').addEventListener('input', renderPreview);
+document.getElementById('eventDate').addEventListener('input', renderPreview);
+
+/* ============================= PREVIEW ============================= */
+function renderPreview(){
+  const sheet = document.getElementById('previewSheet');
+  const eventName = document.getElementById('eventName').value.trim() || 'Ibadah';
+  const eventDate = formatDateID(document.getElementById('eventDate').value);
+
+  let html = `<div class="ph-title">Daftar Pujian ${escapeHtml(eventName)}</div>`;
+  html += `<div class="ph-date">${escapeHtml(eventDate)}</div>`;
+
+  if(state.cart.length === 0){
+    html += `<div class="cart-empty">Pratinjau akan muncul di sini setelah kamu menambahkan lagu.</div>`;
+  } else {
+    let songNum = 0;
+    state.cart.forEach(item => {
+      if(item.type === 'break'){
+        html += `<div class="preview-break">${escapeHtml(item.label || 'Sesi Baru')}</div>`;
+        return;
+      }
+      songNum++;
+      html += `<div class="preview-song"><h4>${songNum}. ${escapeHtml(item.title)}</h4>`;
+      item.sections.forEach(sec => {
+        html += `<div class="preview-sec"><div class="lbl">${escapeHtml(sec.label)}</div><div class="txt">${linesToHtml(sec.lines)}</div></div>`;
+      });
+      html += `</div>`;
+    });
+  }
+  sheet.innerHTML = html;
+}
+
+/* ============================= EXPORT PDF (2 kolom, A4, 11pt) ============================= */
+document.getElementById('exportBtn').addEventListener('click', () => {
+  if(!state.cart.some(i => i.type === 'song')) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 40;
+  const gutter = 22;
+  const colWidth = (pageWidth - margin * 2 - gutter) / 2;
+  const bodySize = 11;
+
+  let col = 0;
+  let y = margin;
+  let contentTop = margin; // y tempat kolom mulai di halaman saat ini (beda di hal.1 karena ada header)
+
+  function colX(){ return margin + col * (colWidth + gutter); }
+  function ensureSpace(needed){
+    if(y + needed > pageHeight - margin){
+      if(col === 0){ col = 1; y = contentTop; }
+      else { doc.addPage(); col = 0; y = margin; contentTop = margin; }
+    }
+  }
+  function printWrapped(text, size, font='times', style='normal', extraGapAfter=4){
+    doc.setFont(font, style);
+    doc.setFontSize(size);
+    const lines = doc.splitTextToSize(text || ' ', colWidth);
+    lines.forEach(l => {
+      ensureSpace(size + 3);
+      doc.text(l, colX(), y);
+      y += size + 3;
+    });
+    y += extraGapAfter;
+  }
+
+  const eventName = document.getElementById('eventName').value.trim() || 'Ibadah';
+  const eventDate = formatDateID(document.getElementById('eventDate').value);
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(16);
+  doc.text(`Daftar Pujian "${eventName}"`, pageWidth / 2, y, { align: 'center' });
+  y += 20;
+  if(eventDate){
+    doc.setFont('times', 'normal');
+    doc.setFontSize(11);
+    doc.text(eventDate, pageWidth / 2, y, { align: 'center' });
+    y += 18;
+  }
+  y += 10;
+  contentTop = y; // kolom kedua di halaman 1 harus mulai setinggi ini, bukan dari margin atas
+
+  let songNum = 0;
+  state.cart.forEach(item => {
+if(item.type === 'break'){
+      ensureSpace(30); 
+	  doc.setFillColor(220, 220, 220);
+      doc.rect(colX(), y, colWidth, 22, 'F');
+      doc.setFont('times', 'bolditalic');
+      doc.setFontSize(11);
+      const breakText = (item.label || 'Sesi Baru').toUpperCase();
+      doc.text(breakText, colX() + (colWidth / 2), y + 15, { align: 'center' });
+      doc.setTextColor(36, 31, 24); 
+      y += 34; 
+      return;
+    }
+    songNum++;
+    ensureSpace(bodySize + 8);
+    printWrapped(`${songNum}. ${item.title}`, 13, 'times', 'bold', 4);
+
+    item.sections.forEach(sec => {
+      ensureSpace(bodySize + 4);
+      printWrapped(sec.label, 10, 'times', 'bolditalic', 2);
+      const secLines = sec.lines.filter(l => l.trim() !== '');
+      secLines.forEach((l, i) => {
+        printWrapped(l, bodySize, 'times', 'normal', i === secLines.length - 1 ? 6 : 0);
+      });
+    });
+    y += 8;
+  });
+
+  const safeName = eventName.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'daftar-pujian';
+  doc.save(`Daftar-Pujian-${safeName}.pdf`);
+});
+
+/* ============================= INIT ============================= */
+scanLibrary();
+renderCart();
+renderPreview();
+</script>
+</body>
+</html>
