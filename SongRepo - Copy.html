@@ -6,7 +6,7 @@
 <title>Perpustakaan Lagu GPdI COTW Temanggung</title>
 <link rel="icon" type="image/png" href="favicon.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=Roboto+Mono:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root{
@@ -51,23 +51,8 @@
   }
   .brand .mark em{ font-style:italic; color: var(--gold); }
   .brand .sub{ font-size:12px; color: var(--ink-soft); letter-spacing:.02em; }
-  .status-container{
-    display:flex; flex-direction:column; align-items:flex-end; gap:4px;
-  }
   .status{
-    font-family:'Roboto Mono', monospace; font-size:11px; color: var(--ink-soft);
-  }
-  .cache-info{
-    font-family:'Roboto Mono', monospace; font-size:10px; color: var(--ink-soft);
-    display:none; align-items:center; gap:6px;
-  }
-  .btn-refresh{
-    background:none; border:1px solid var(--rule); border-radius:var(--radius);
-    padding:2px 6px; font-family:'Roboto Mono', monospace; font-size:10px;
-    color:var(--ink-soft); cursor:pointer; transition:all .2s ease;
-  }
-  .btn-refresh:hover{
-    background:var(--paper-alt); color:var(--indigo-deep); border-color:var(--indigo-deep);
+    font-family:'IBM Plex Mono', monospace; font-size:11px; color: var(--ink-soft);
   }
 
   /* ---------- 3-pane layout ---------- */
@@ -101,11 +86,11 @@
   .search input{
     border:none; outline:none; background:none; font-family:'Inter'; font-size:14px; width:100%; color:var(--ink);
   }
-  .search .hint-small{ font-size:10.5px; color:var(--ink-soft); margin: -6px 0 12px 2px; font-family:'Roboto Mono', monospace; }
+  .search .hint-small{ font-size:10.5px; color:var(--ink-soft); margin: -6px 0 12px 2px; font-family:'IBM Plex Mono',monospace; }
 
   .tabs{ display:flex; gap:6px; margin-bottom:12px; }
   .tab{
-    font-family:'Roboto Mono', monospace; font-size:11px; letter-spacing:.03em; text-transform:uppercase;
+    font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.03em; text-transform:uppercase;
     padding:7px 12px; border:1px solid var(--rule); border-radius: 999px;
     background: var(--white); cursor:pointer; color: var(--ink-soft);
   }
@@ -122,39 +107,29 @@
     font-family:'Fraunces', serif; font-weight:600; font-size:15px; color: var(--indigo-deep);
   }
   .group-tag{
-    font-family:'Roboto Mono', monospace; font-size:9.5px; letter-spacing:.04em; text-transform:uppercase;
+    font-family:'IBM Plex Mono', monospace; font-size:9.5px; letter-spacing:.04em; text-transform:uppercase;
     padding:1px 6px; border-radius:3px; margin-left:7px; vertical-align:1px;
   }
   .group-tag.lagu{ background: var(--paper-alt); color: var(--ink-soft); }
   .group-tag.animasi{ background: var(--sage); color: var(--white); }
   .group-tag.chord{ background: #e3ebfb; color: #2547a8; }
   .song-row .song-meta{
-    font-family:'Roboto Mono', monospace; font-size:10px; color: var(--ink-soft); white-space:nowrap;
+    font-family:'IBM Plex Mono', monospace; font-size:10px; color: var(--ink-soft); white-space:nowrap;
   }
   .empty-state{ padding: 40px 10px; text-align:center; color: var(--ink-soft); }
   .empty-state h3{ font-family:'Fraunces',serif; color: var(--indigo-deep); margin:0 0 6px; font-size:16px; }
 
-  .preview-controls{
-    display:flex; flex-wrap:wrap; gap:16px; margin: -4px 0 16px;
-  }
   .chord-toggle{
     display:flex; align-items:center; gap:6px; font-size:12.5px; color: var(--ink-soft);
-    cursor:pointer; user-select:none;
-  }
-  .note-line{
-    font-style:italic; color: var(--sage); font-size:0.95em; margin-top:1px; margin-bottom:3px;
-  }
-  .preview-sheet.show-chords .lyric-line,
-  .preview-sheet.show-chords .note-line{
-    font-family:'Roboto Mono', monospace;
+    margin: -4px 0 12px; cursor:pointer; user-select:none;
   }
   .chord-toggle input{ cursor:pointer; }
   .chord-line{
-    font-family:'Roboto Mono', monospace; white-space:pre; font-size:1em;
+    font-family:'IBM Plex Mono', monospace; white-space:pre; font-size:1em;
     color:#2547a8; line-height:1.35;
   }
   .lyric-line{ white-space:pre-wrap; }
-  .lyric-line.with-chord{ font-family:'Roboto Mono', monospace; }
+  .lyric-line.with-chord{ font-family:'IBM Plex Mono', monospace; }
 
   .btn{
     font-family:'Inter'; font-size:13px; font-weight:600; cursor:pointer;
@@ -170,7 +145,7 @@
   .cart-pane h2.title{ font-family:'Fraunces', serif; font-size:19px; margin: 0 0 4px; color: var(--indigo-deep); }
   .cart-pane .sub{ font-size:11.5px; color:var(--ink-soft); margin-bottom:14px; }
   .field{ margin-bottom:10px; }
-  .field label{ display:block; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); margin-bottom:4px; font-family:'Roboto Mono', monospace; }
+  .field label{ display:block; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); margin-bottom:4px; font-family:'IBM Plex Mono',monospace; }
   .field input{
     width:100%; padding:8px 10px; border:1px solid var(--rule); border-radius: var(--radius);
     font-family:'Inter'; font-size:14px; background: var(--white);
@@ -180,11 +155,11 @@
   .cart-item{ background: var(--white); border:1px solid var(--rule); border-radius: var(--radius); padding:10px 12px; cursor:grab; }
   .cart-item.dragging{ opacity:.4; }
   .cart-item .ci-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
-  .cart-item .num{ font-family:'Roboto Mono', monospace; color: var(--gold); font-size:11.5px; margin-right:5px; }
+  .cart-item .num{ font-family:'IBM Plex Mono',monospace; color: var(--gold); font-size:11.5px; margin-right:5px; }
   .cart-item h4{ margin:0; font-family:'Fraunces',serif; font-size:14.5px; color:var(--indigo-deep); font-weight:600; }
   .cart-item .chips{ margin-top:5px; display:flex; flex-wrap:wrap; gap:4px; }
   .cart-item .chip{
-    font-size:10px; font-family:'Roboto Mono', monospace; background:var(--paper-alt); color: var(--ink-soft);
+    font-size:10px; font-family:'IBM Plex Mono',monospace; background:var(--paper-alt); color: var(--ink-soft);
     padding:1px 6px; border-radius:3px; text-transform:uppercase;
   }
   .cart-item .ci-actions{ display:flex; gap:4px; flex-shrink:0; }
@@ -197,7 +172,7 @@
     padding: 8px 4px; display:flex; align-items:center; gap:8px;
   }
   .cart-item.break-item input{
-    flex:1; border:none; background:none; font-family:'Roboto Mono', monospace; text-transform:uppercase;
+    flex:1; border:none; background:none; font-family:'IBM Plex Mono',monospace; text-transform:uppercase;
     font-size:11.5px; letter-spacing:.06em; color: var(--gold); outline:none; padding:2px 0;
   }
 
@@ -219,10 +194,10 @@
   .preview-song{ margin-bottom:18px; }
   .preview-song h4{ font-family:'Fraunces',serif; font-size:15.5px; margin: 0 0 6px; color: var(--indigo-deep); }
   .preview-sec{ margin-bottom:8px; }
-  .preview-sec .lbl{ font-family:'Roboto Mono', monospace; font-size:10px; text-transform:uppercase; color: var(--sage); letter-spacing:.05em; }
+  .preview-sec .lbl{ font-family:'IBM Plex Mono',monospace; font-size:10px; text-transform:uppercase; color: var(--sage); letter-spacing:.05em; }
   .preview-sec .txt{ font-size:13px; line-height:1.55; color: var(--ink); }
   .preview-break{
-    text-align:center; font-family:'Roboto Mono', monospace; font-size:11px; text-transform:uppercase;
+    text-align:center; font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase;
     letter-spacing:.08em; color: var(--gold); margin: 20px 0; border-top:1px dashed var(--rule); border-bottom:1px dashed var(--rule);
     padding: 6px 0;
   }
@@ -233,7 +208,7 @@
   .editor{ background: var(--white); width:100%; max-width:560px; border-radius: 4px; box-shadow: 0 30px 60px -20px rgba(0,0,0,.4); overflow:hidden; }
   .editor .ehead{ padding: 20px 24px 14px; border-bottom:1px solid var(--rule); display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
   .editor .ehead h2{ font-family:'Fraunces', serif; font-size:21px; margin:0 0 4px; color: var(--indigo-deep); }
-  .editor .ehead .eyebrow{ font-family:'Roboto Mono', monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color: var(--ink-soft); }
+  .editor .ehead .eyebrow{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color: var(--ink-soft); }
   .close-x{ background:none; border:none; font-size:20px; cursor:pointer; color: var(--ink-soft); line-height:1; padding:2px 6px; }
   .ebody{ padding: 16px 24px 8px; max-height: 50vh; overflow-y:auto; }
   .ebody p.hint{ font-size:12.5px; color:var(--ink-soft); margin:0 0 12px; }
@@ -241,7 +216,7 @@
   .sec-row.dragging{ opacity:.4; }
   .sec-row .handle{ color: var(--rule); font-family:monospace; letter-spacing:2px; user-select:none; }
   .sec-row label{ flex:1; font-size:13.5px; display:flex; align-items:flex-start; gap:10px; cursor:pointer; }
-  .sec-row .tagchip{ font-family:'Roboto Mono', monospace; font-size:10px; text-transform:uppercase; background:var(--indigo-deep); color:var(--white); padding:2px 7px; border-radius:3px; flex-shrink:0; }
+  .sec-row .tagchip{ font-family:'IBM Plex Mono', monospace; font-size:10px; text-transform:uppercase; background:var(--indigo-deep); color:var(--white); padding:2px 7px; border-radius:3px; flex-shrink:0; }
   .sec-row .preview{ font-size:11.5px; color: var(--ink-soft); line-height: 1.5; }
   .efoot{ padding: 14px 24px 22px; display:flex; justify-content:flex-end; gap:10px; border-top:1px solid var(--rule); }
 
@@ -260,13 +235,7 @@
     <div class="mark">Perpustakaan Lagu <em>GPdI COTW Temanggung</em></div>
     <div class="sub">Susun daftar pujian, atur ulang bait, unduh PDF</div>
   </div>
-  <div class="status-container">
-    <div class="status" id="scanStatus">memindai folder…</div>
-    <div id="cacheInfo" class="cache-info">
-      Data lokal diperbarui: <span id="cacheTime"></span>
-      <button id="refreshCacheBtn" class="btn-refresh">🔄 Segarkan</button>
-    </div>
-  </div>
+  <div class="status" id="scanStatus">memindai folder…</div>
 </header>
 
 <div class="app">
@@ -312,11 +281,7 @@
   <section class="pane preview-pane">
     <h2 class="title">Pratinjau</h2>
     <div class="sub">Tampilan lagu-lagu sesuai urutan di daftar pujian.</div>
-    <div class="preview-controls">
-      <label class="chord-toggle"><input type="checkbox" id="chordToggle"> Tampilkan Chord</label>
-      <label class="chord-toggle"><input type="checkbox" id="notesToggle"> Tampilkan Terjemahan</label>
-      <label class="chord-toggle"><input type="checkbox" id="capsToggle"> Lirik Kapital</label>
-    </div>
+    <label class="chord-toggle"><input type="checkbox" id="chordToggle"> Tampilkan Chord</label>
     <div class="preview-sheet" id="previewSheet"></div>
 	<button class="btn export-btn" id="exportBtn" disabled>Unduh PDF</button>
   </section>
@@ -351,8 +316,6 @@ const state = {
   activeTab: 'lagu',
   search: '',
   showChords: false,
-  showNotes: false,
-  showCaps: false,
   cart: [],  
   editing: { songId: null, cartId: null, working: [] }
 };
@@ -367,15 +330,12 @@ function flattenLines(lines){ return lines.filter(l => l.text.trim() !== '').map
 function linesToHtml(lines){
   return lines.filter(l => l.text.trim() !== '').map(l => escapeHtml(l.text)).join('<br>');
 }
-function sectionLinesHtml(lines, showChords, showNotes, showCaps){
+function sectionLinesHtml(lines, showChords){
   return lines.filter(l => l.text.trim() !== '').map(l => {
     const hasChord = showChords && l.chord;
-    const hasNote = showNotes && l.note;
-    const textToPrint = showCaps ? l.text.toUpperCase() : l.text;
     let out = '';
     if(hasChord) out += `<div class="chord-line">${escapeHtml(l.chord)}</div>`;
-    out += `<div class="lyric-line${hasChord ? ' with-chord' : ''}">${escapeHtml(textToPrint)}</div>`;
-    if(hasNote) out += `<div class="note-line">${escapeHtml(l.note)}</div>`;
+    out += `<div class="lyric-line${hasChord ? ' with-chord' : ''}">${escapeHtml(l.text)}</div>`;
     return out;
   }).join('');
 }
@@ -416,18 +376,12 @@ function parseSong(filename, text){
   const sections = [];
   let current = null;
   let pendingChord = null;
-  let pendingNote = null;
   const counts = {};
   for(let i = startIdx; i < rawLines.length; i++){
     const line = rawLines[i];
     const chordMatch = line.match(/^\s*\[CHORD\](.*)$/i);
     if(chordMatch){
       if(current) pendingChord = chordMatch[1].replace(/\s+$/, '');
-      continue;
-    }
-    const noteMatch = line.match(/^\s*\[NOTES?\](.*)$/i);
-    if(noteMatch){
-      if(current) pendingNote = noteMatch[1].trim();
       continue;
     }
     const m = line.match(/^\s*\[([^\]]+)\]\s*$/);
@@ -438,11 +392,9 @@ function parseSong(filename, text){
       current = { tag, label, lines: [] };
       sections.push(current);
       pendingChord = null;
-      pendingNote = null;
     } else if(current){
-      current.lines.push({ text: line, chord: pendingChord || null, note: pendingNote || null });
+      current.lines.push({ text: line, chord: pendingChord || null });
       pendingChord = null;
-      pendingNote = null;
     }
   }
   sections.forEach(s => {
@@ -454,9 +406,7 @@ function parseSong(filename, text){
 
 function buildSongRecord(filename, text){
   const parsed = parseSong(filename, text);
-  const textLines = parsed.sections.flatMap(s => s.lines.map(l => l.text));
-  const noteLines = parsed.sections.flatMap(s => s.lines.map(l => l.note || ''));
-  const searchText = (parsed.title + ' ' + textLines.join(' ') + ' ' + noteLines.join(' ')).toLowerCase();
+  const searchText = (parsed.title + ' ' + parsed.sections.flatMap(s => s.lines.map(l => l.text)).join(' ')).toLowerCase();
   const hasChords = parsed.sections.some(s => s.lines.some(l => l.chord));
   const groups = [isAnimasiFile(filename) ? 'animasi' : 'lagu'];
   if(hasChords) groups.push('chord');
@@ -472,56 +422,10 @@ function buildSongRecord(filename, text){
 }
 
 /* ============================= SCANNING ============================= */
-const CACHE_KEY = 'song_repo_cache';
-const CACHE_DURATION = 3 * 24 * 60 * 60 * 1000; // 3 days in ms
-
-function formatDateTimeID(timestamp) {
-  const date = new Date(timestamp);
-  const d = date.getDate();
-  const m = MONTHS_ID[date.getMonth()];
-  const y = date.getFullYear();
-  const hh = String(date.getHours()).padStart(2, '0');
-  const mm = String(date.getMinutes()).padStart(2, '0');
-  return `${d} ${m} ${y} pukul ${hh}:${mm}`;
-}
-
-function showCacheInfo(timestamp) {
-  const cacheInfo = document.getElementById('cacheInfo');
-  const cacheTime = document.getElementById('cacheTime');
-  if (cacheInfo && cacheTime) {
-    cacheTime.textContent = formatDateTimeID(timestamp);
-    cacheInfo.style.display = 'inline-flex';
-  }
-}
-
 async function scanLibrary(){
-  const cached = localStorage.getItem(CACHE_KEY);
-  if (cached) {
-    try {
-      const parsedCache = JSON.parse(cached);
-      const age = Date.now() - parsedCache.timestamp;
-      if (age < CACHE_DURATION && Array.isArray(parsedCache.songs) && parsedCache.songs.length > 0) {
-        state.songs = parsedCache.songs;
-        const statusEl = document.getElementById('scanStatus');
-        statusEl.textContent = `${state.songs.length} lagu dimuat (dari cache)`;
-        showCacheInfo(parsedCache.timestamp);
-        renderSongList();
-        renderTabCounts();
-        return;
-      }
-    } catch (e) {
-      console.warn('Gagal membaca cache, memindai ulang...', e);
-    }
-  }
-  await forceRefreshLibrary();
-}
-
-async function forceRefreshLibrary(){
   const statusEl = document.getElementById('scanStatus');
-  const cacheInfo = document.getElementById('cacheInfo');
-  if (cacheInfo) cacheInfo.style.display = 'none';
-
   let filenames = [];
+
   try{
     const res = await fetch('./library/library-manifest.json', { cache: 'no-store' });
     if(res.ok){
@@ -581,24 +485,9 @@ async function forceRefreshLibrary(){
 
   state.songs = songs;
   statusEl.textContent = `${songs.length} lagu dimuat`;
-  
-  const timestamp = Date.now();
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp, songs }));
-    showCacheInfo(timestamp);
-  } catch (e) {
-    console.warn('Gagal menyimpan cache ke localStorage', e);
-  }
-
   renderSongList();
   renderTabCounts();
 }
-
-document.getElementById('refreshCacheBtn').addEventListener('click', async () => {
-  showToast('Memperbarui data lagu...');
-  await forceRefreshLibrary();
-  showToast('Data lagu berhasil diperbarui.');
-});
 
 document.getElementById('manualInput').addEventListener('change', async (e) => {
   const files = Array.from(e.target.files || []);
@@ -865,26 +754,12 @@ document.getElementById('chordToggle').addEventListener('change', (e) => {
   state.showChords = e.target.checked;
   renderPreview();
 });
-document.getElementById('notesToggle').addEventListener('change', (e) => {
-  state.showNotes = e.target.checked;
-  renderPreview();
-});
-document.getElementById('capsToggle').addEventListener('change', (e) => {
-  state.showCaps = e.target.checked;
-  renderPreview();
-});
 
 /* ============================= PREVIEW ============================= */
 function renderPreview(){
   const sheet = document.getElementById('previewSheet');
   const eventName = document.getElementById('eventName').value.trim() || 'Ibadah';
   const eventDate = formatDateID(document.getElementById('eventDate').value);
-
-  if (state.showChords) {
-    sheet.classList.add('show-chords');
-  } else {
-    sheet.classList.remove('show-chords');
-  }
 
   let html = `<div class="ph-title">Daftar Pujian ${escapeHtml(eventName)}</div>`;
   html += `<div class="ph-date">${escapeHtml(eventDate)}</div>`;
@@ -901,7 +776,7 @@ function renderPreview(){
       songNum++;
       html += `<div class="preview-song"><h4>${songNum}. ${escapeHtml(item.title)}</h4>`;
       item.sections.forEach(sec => {
-        html += `<div class="preview-sec"><div class="lbl">${escapeHtml(sec.label)}</div><div class="txt">${sectionLinesHtml(sec.lines, state.showChords, state.showNotes, state.showCaps)}</div></div>`;
+        html += `<div class="preview-sec"><div class="lbl">${escapeHtml(sec.label)}</div><div class="txt">${sectionLinesHtml(sec.lines, state.showChords)}</div></div>`;
       });
       html += `</div>`;
     });
@@ -910,163 +785,96 @@ function renderPreview(){
 }
 
 /* ============================= EXPORT PDF (2 kolom, A4, 11pt) ============================= */
-let robotoMonoBase64 = null;
-
-async function ensureRobotoMonoFont(doc) {
-  if (!robotoMonoBase64) {
-    const url = 'https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@5.0.18/files/roboto-mono-latin-400-normal.ttf';
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const buffer = await res.arrayBuffer();
-      let binary = '';
-      const bytes = new Uint8Array(buffer);
-      const len = bytes.byteLength;
-      for (let i = 0; i < len; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      robotoMonoBase64 = window.btoa(binary);
-    } catch (e) {
-      console.error('Gagal memuat font Roboto Mono dari CDN, menggunakan courier sebagai fallback.', e);
-      return false;
-    }
-  }
-  try {
-    doc.addFileToVFS('RobotoMono-Regular.ttf', robotoMonoBase64);
-    doc.addFont('RobotoMono-Regular.ttf', 'RobotoMono', 'normal');
-    return true;
-  } catch (e) {
-    console.error('Gagal menambahkan font Roboto Mono ke jsPDF.', e);
-    return false;
-  }
-}
-
-document.getElementById('exportBtn').addEventListener('click', async () => {
+document.getElementById('exportBtn').addEventListener('click', () => {
   if(!state.cart.some(i => i.type === 'song')) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 40;
+  const gutter = 22;
+  const colWidth = (pageWidth - margin * 2 - gutter) / 2;
+  const bodySize = 11;
 
-  const exportBtn = document.getElementById('exportBtn');
-  const originalText = exportBtn.textContent;
-  exportBtn.disabled = true;
-  exportBtn.textContent = 'Memproses PDF...';
+  let col = 0;
+  let y = margin;
+  let contentTop = margin; 
 
-  try {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 40;
-    const gutter = 22;
-    const colWidth = (pageWidth - margin * 2 - gutter) / 2;
-    const bodySize = 11;
-
-    // Load custom font
-    const hasRobotoMono = await ensureRobotoMonoFont(doc);
-    const monoFont = hasRobotoMono ? 'RobotoMono' : 'courier';
-
-    let col = 0;
-    let y = margin;
-    let contentTop = margin; 
-
-    function colX(){ return margin + col * (colWidth + gutter); }
-    function ensureSpace(needed){
-      if(y + needed > pageHeight - margin){
-        if(col === 0){ col = 1; y = contentTop; }
-        else { doc.addPage(); col = 0; y = margin; contentTop = margin; }
-      }
+  function colX(){ return margin + col * (colWidth + gutter); }
+  function ensureSpace(needed){
+    if(y + needed > pageHeight - margin){
+      if(col === 0){ col = 1; y = contentTop; }
+      else { doc.addPage(); col = 0; y = margin; contentTop = margin; }
     }
-    function printWrapped(text, size, font='times', style='normal', extraGapAfter=4){
-      doc.setFont(font, style);
-      doc.setFontSize(size);
-      const lines = doc.splitTextToSize(text || ' ', colWidth);
-      lines.forEach(l => {
-        ensureSpace(size + 3);
-        doc.text(l, colX(), y);
-        y += size + 3;
-      });
-      y += extraGapAfter;
-    }
-
-    const eventName = document.getElementById('eventName').value.trim() || 'Ibadah';
-    const eventDateVal = document.getElementById('eventDate').value;
-    const eventDate = eventDateVal ? formatDateID(eventDateVal) : '';
-
-    doc.setFont('times', 'bold');
-    doc.setFontSize(16);
-    doc.text(`Daftar Pujian "${eventName}"`, pageWidth / 2, y, { align: 'center' });
-    y += 20;
-    if(eventDate){
-      doc.setFont('times', 'normal');
-      doc.setFontSize(11);
-      doc.text(eventDate, pageWidth / 2, y, { align: 'center' });
-      y += 18;
-    }
-    y += 10;
-    contentTop = y; 
-
-    let songNum = 0;
-    state.cart.forEach(item => {
-      if(item.type === 'break'){
-        ensureSpace(30); 
-        doc.setFillColor(220, 220, 220);
-        doc.rect(colX(), y, colWidth, 22, 'F');
-        doc.setFont('times', 'bolditalic');
-        doc.setFontSize(11);
-        const breakText = (item.label || 'Sesi Baru').toUpperCase();
-        doc.text(breakText, colX() + (colWidth / 2), y + 15, { align: 'center' });
-        doc.setTextColor(36, 31, 24); 
-        y += 34; 
-        return;
-      }
-      songNum++;
-      ensureSpace(bodySize + 8);
-      printWrapped(`${songNum}. ${item.title}`, 13, 'times', 'bold', 4);
-
-      item.sections.forEach(sec => {
-        ensureSpace(bodySize + 4);
-        const useMono = state.showChords;
-        const lyricFont = useMono ? monoFont : 'times';
-        printWrapped(sec.label, 10, 'times', 'bolditalic', 2);
-        
-        const secLines = sec.lines.filter(l => l.text.trim() !== '');
-        secLines.forEach((l, i) => {
-          const isLast = i === secLines.length - 1;
-          const hasChord = state.showChords && l.chord;
-          const hasNote = state.showNotes && l.note;
-
-          if(state.showChords && l.chord){
-            doc.setTextColor(37, 71, 168); 
-            printWrapped(l.chord, bodySize, monoFont, 'normal', 0);
-            doc.setTextColor(0, 0, 0); 
-          }
-
-          const lyricText = state.showCaps ? l.text.toUpperCase() : l.text;
-          printWrapped(lyricText, bodySize, lyricFont, 'normal', (!hasNote && isLast) ? 6 : 0);
-
-          if(hasNote){
-            doc.setTextColor(110, 124, 92); // Sage green for translation notes
-            const noteFont = useMono ? monoFont : 'times';
-            const noteStyle = useMono ? 'normal' : 'italic';
-            printWrapped(l.note, bodySize - 1, noteFont, noteStyle, isLast ? 6 : 2);
-            doc.setTextColor(0, 0, 0); // Reset to black
-          }
-        });
-      });
-      y += 8;
-    });
-
-    let pdfName = `Daftar Pujian_${eventName}`;
-    if (eventDate) {
-      pdfName += `_${eventDate}`;
-    }
-    const safePdfName = pdfName.replace(/[\/\\:*?"<>|]/g, '-') + '.pdf';
-    doc.save(safePdfName);
-  } catch (err) {
-    console.error('Gagal mengekspor PDF:', err);
-    showToast('Gagal membuat file PDF.');
-  } finally {
-    exportBtn.disabled = false;
-    exportBtn.textContent = originalText;
   }
+  function printWrapped(text, size, font='times', style='normal', extraGapAfter=4){
+    doc.setFont(font, style);
+    doc.setFontSize(size);
+    const lines = doc.splitTextToSize(text || ' ', colWidth);
+    lines.forEach(l => {
+      ensureSpace(size + 3);
+      doc.text(l, colX(), y);
+      y += size + 3;
+    });
+    y += extraGapAfter;
+  }
+
+  const eventName = document.getElementById('eventName').value.trim() || 'Ibadah';
+  const eventDate = formatDateID(document.getElementById('eventDate').value);
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(16);
+  doc.text(`Daftar Pujian "${eventName}"`, pageWidth / 2, y, { align: 'center' });
+  y += 20;
+  if(eventDate){
+    doc.setFont('times', 'normal');
+    doc.setFontSize(11);
+    doc.text(eventDate, pageWidth / 2, y, { align: 'center' });
+    y += 18;
+  }
+  y += 10;
+  contentTop = y; 
+
+  let songNum = 0;
+  state.cart.forEach(item => {
+if(item.type === 'break'){
+      ensureSpace(30); 
+	  doc.setFillColor(220, 220, 220);
+      doc.rect(colX(), y, colWidth, 22, 'F');
+      doc.setFont('times', 'bolditalic');
+      doc.setFontSize(11);
+      const breakText = (item.label || 'Sesi Baru').toUpperCase();
+      doc.text(breakText, colX() + (colWidth / 2), y + 15, { align: 'center' });
+      doc.setTextColor(36, 31, 24); 
+      y += 34; 
+      return;
+    }
+    songNum++;
+    ensureSpace(bodySize + 8);
+    printWrapped(`${songNum}. ${item.title}`, 13, 'times', 'bold', 4);
+
+    item.sections.forEach(sec => {
+      ensureSpace(bodySize + 4);
+      const secHasChords = sec.lines.some(l => l.chord);
+      const useMono = state.showChords && secHasChords;
+      const lyricFont = useMono ? 'courier' : 'times';
+      printWrapped(sec.label, 10, 'times', 'bolditalic', 2);
+      const secLines = sec.lines.filter(l => l.text.trim() !== '');
+      secLines.forEach((l, i) => {
+        const isLast = i === secLines.length - 1;
+        if(state.showChords && l.chord){
+          doc.setTextColor(37, 71, 168); 
+          printWrapped(l.chord, bodySize, 'courier', 'normal', 0);
+          doc.setTextColor(0, 0, 0); 
+        }
+        printWrapped(l.text, bodySize, lyricFont, 'normal', isLast ? 6 : 0);
+      });
+    });
+    y += 8;
+  });
+
+  const safeName = eventName.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'daftar-pujian';
+  doc.save(`Daftar-Pujian-${safeName}.pdf`);
 });
 
 /* ============================= INIT ============================= */
