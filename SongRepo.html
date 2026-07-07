@@ -239,7 +239,6 @@
 </header>
 
 <div class="app">
-  <!-- LEFT: library -->
   <main class="pane library-pane">
     <div id="manualBox" class="manual-box" style="display:none;">
       <strong>Tidak bisa memindai folder secara otomatis.</strong>
@@ -251,7 +250,6 @@
       <span>🔎</span>
       <input type="text" id="searchInput" placeholder="Cari judul atau lirik lagu…">
     </div>
-    <!--div class="hint-small">pencarian juga menelusuri isi lirik</div-->
 
     <div class="tabs" id="tabs">
       <div class="tab active" data-tab="lagu">Lagu <span class="count" id="countLagu">0</span></div>
@@ -262,7 +260,6 @@
     <div class="song-list" id="songList"></div>
   </main>
 
-  <!-- MIDDLE: daftar pujian -->
   <aside class="pane cart-pane">
     <h2 class="title">Daftar Pujian</h2>
     <div class="sub">Klik lagu di kiri untuk menambah. Seret untuk atur urutan.</div>
@@ -281,7 +278,6 @@
     <button class="btn dashed" id="addBreakBtn">+ Tambah Break / Pembatas Sesi</button>
   </aside>
 
-  <!-- RIGHT: preview -->
   <section class="pane preview-pane">
     <h2 class="title">Pratinjau</h2>
     <div class="sub">Tampilan lagu-lagu sesuai urutan di daftar pujian.</div>
@@ -291,7 +287,6 @@
   </section>
 </div>
 
-<!-- Editor overlay -->
 <div class="overlay hidden" id="overlay">
   <div class="editor">
     <div class="ehead">
@@ -321,8 +316,7 @@ const state = {
   activeTab: 'lagu',
   search: '',
   showChords: false,
-  cart: [],  // items: {type:'song', cartId, songId, title, groups, sections:[{tag,label,lines:[{text,chord}]}]}
-             //     or {type:'break', cartId, label}
+  cart: [],  
   editing: { songId: null, cartId: null, working: [] }
 };
 let dragSrcIndex = null;
@@ -336,7 +330,6 @@ function flattenLines(lines){ return lines.filter(l => l.text.trim() !== '').map
 function linesToHtml(lines){
   return lines.filter(l => l.text.trim() !== '').map(l => escapeHtml(l.text)).join('<br>');
 }
-// Render lirik (dan chord jika diminta) sebagai baris-baris blok, tiap chord nempel di atas baris liriknya
 function sectionLinesHtml(lines, showChords){
   return lines.filter(l => l.text.trim() !== '').map(l => {
     const hasChord = showChords && l.chord;
@@ -388,7 +381,6 @@ function parseSong(filename, text){
     const line = rawLines[i];
     const chordMatch = line.match(/^\s*\[CHORD\](.*)$/i);
     if(chordMatch){
-      // baris penanda chord: bukan lirik, simpan untuk ditempel ke baris lirik berikutnya
       if(current) pendingChord = chordMatch[1].replace(/\s+$/, '');
       continue;
     }
@@ -465,12 +457,11 @@ async function scanLibrary(){
 
   statusEl.textContent = `memuat 0 / ${filenames.length} lagu…`;
   const songs = [];
-  const batchSize = 50; // Unduh 50 lagu sekaligus secara paralel
+  const batchSize = 50; 
 
   for (let i = 0; i < filenames.length; i += batchSize) {
     const batch = filenames.slice(i, i + batchSize);
     
-    // Buat array "janji" (promises) untuk mengunduh batch secara bersamaan
     const batchPromises = batch.map(async (fname) => {
       try {
         const r = await fetch('./library/' + encodeURIComponent(fname));
@@ -479,28 +470,19 @@ async function scanLibrary(){
         return buildSongRecord(fname, text);
       } catch (e) {
         console.warn('Gagal memuat', fname, e);
-        return null; // Kembalikan null jika gagal agar Promise.all tidak berhenti
+        return null; 
       }
     });
 
-    // Tunggu semua 50 file selesai diunduh
     const results = await Promise.all(batchPromises);
     
-    // Masukkan hasil yang sukses ke dalam array utama
     for (const song of results) {
       if (song) songs.push(song);
     }
     
-    // Update status di UI agar terlihat progress-nya
     statusEl.textContent = `memuat ${songs.length} / ${filenames.length} lagu…`;
   }
-  // ------------------------
 
-  state.songs = songs;
-  statusEl.textContent = `${songs.length} lagu dimuat`;
-  renderSongList();
-  renderTabCounts();
-}
   state.songs = songs;
   statusEl.textContent = `${songs.length} lagu dimuat`;
   renderSongList();
@@ -816,7 +798,7 @@ document.getElementById('exportBtn').addEventListener('click', () => {
 
   let col = 0;
   let y = margin;
-  let contentTop = margin; // y tempat kolom mulai di halaman saat ini (beda di hal.1 karena ada header)
+  let contentTop = margin; 
 
   function colX(){ return margin + col * (colWidth + gutter); }
   function ensureSpace(needed){
@@ -851,7 +833,7 @@ document.getElementById('exportBtn').addEventListener('click', () => {
     y += 18;
   }
   y += 10;
-  contentTop = y; // kolom kedua di halaman 1 harus mulai setinggi ini, bukan dari margin atas
+  contentTop = y; 
 
   let songNum = 0;
   state.cart.forEach(item => {
@@ -881,9 +863,9 @@ if(item.type === 'break'){
       secLines.forEach((l, i) => {
         const isLast = i === secLines.length - 1;
         if(state.showChords && l.chord){
-          doc.setTextColor(37, 71, 168); // biru, khusus teks chord
+          doc.setTextColor(37, 71, 168); 
           printWrapped(l.chord, bodySize, 'courier', 'normal', 0);
-          doc.setTextColor(0, 0, 0); // kembali ke warna teks default
+          doc.setTextColor(0, 0, 0); 
         }
         printWrapped(l.text, bodySize, lyricFont, 'normal', isLast ? 6 : 0);
       });
