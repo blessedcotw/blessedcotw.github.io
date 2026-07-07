@@ -1,0 +1,56 @@
+Bagian yang Terbaik
+
+[Intro]
+
+Line one of text
+Line two of text
+
+[Verse]
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+[Chorus]
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+[Bridge]
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+[Ending]
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text

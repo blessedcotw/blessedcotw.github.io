@@ -1,0 +1,79 @@
+Untitled
+
+[Verse]
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+[Verse 2 1]
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+[Verse 2 2]
+
+Line one of text
+Line two of text
+
+[Chorus]
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+[Verse 3]
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+[Chorus 2]
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
+
+Line one of text
+Line two of text
