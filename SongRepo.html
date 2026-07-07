@@ -463,15 +463,44 @@ async function scanLibrary(){
     return;
   }
 
-  statusEl.textContent = `memuat ${filenames.length} file…`;
+  statusEl.textContent = `memuat 0 / ${filenames.length} lagu…`;
   const songs = [];
-  for(const fname of filenames){
-    try{
-      const r = await fetch('./library/' + encodeURIComponent(fname));
-      const text = await r.text();
-      songs.push(buildSongRecord(fname, text));
-    }catch(e){ console.warn('Gagal memuat', fname, e); }
+  const batchSize = 50; // Unduh 50 lagu sekaligus secara paralel
+
+  for (let i = 0; i < filenames.length; i += batchSize) {
+    const batch = filenames.slice(i, i + batchSize);
+    
+    // Buat array "janji" (promises) untuk mengunduh batch secara bersamaan
+    const batchPromises = batch.map(async (fname) => {
+      try {
+        const r = await fetch('./library/' + encodeURIComponent(fname));
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const text = await r.text();
+        return buildSongRecord(fname, text);
+      } catch (e) {
+        console.warn('Gagal memuat', fname, e);
+        return null; // Kembalikan null jika gagal agar Promise.all tidak berhenti
+      }
+    });
+
+    // Tunggu semua 50 file selesai diunduh
+    const results = await Promise.all(batchPromises);
+    
+    // Masukkan hasil yang sukses ke dalam array utama
+    for (const song of results) {
+      if (song) songs.push(song);
+    }
+    
+    // Update status di UI agar terlihat progress-nya
+    statusEl.textContent = `memuat ${songs.length} / ${filenames.length} lagu…`;
   }
+  // ------------------------
+
+  state.songs = songs;
+  statusEl.textContent = `${songs.length} lagu dimuat`;
+  renderSongList();
+  renderTabCounts();
+}
   state.songs = songs;
   statusEl.textContent = `${songs.length} lagu dimuat`;
   renderSongList();
