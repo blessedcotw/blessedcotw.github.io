@@ -1676,12 +1676,15 @@
       const songId = state.editing.songId;
       if (!songId) return;
       const pwdConfirm = await promptPassword('Masukkan kata sandi Admin untuk mengonfirmasi penghapusan lagu:');
-      if (pwdConfirm !== 'GPdICOTW2026') {
-        if (pwdConfirm !== null) alert('Kata sandi salah! Aksi hapus dibatalkan.');
+      if (pwdConfirm === null) return;
+      const isValid = await verifyPassword(pwdConfirm);
+      if (!isValid) {
+        alert('Kata sandi salah! Aksi hapus dibatalkan.');
         return;
       }
+      adminPasswordCache = pwdConfirm;
       if (!decryptedToken) {
-        decryptedToken = decryptToken(DEFAULT_GITHUB_TOKEN, 'GPdICOTW2026');
+        decryptedToken = decryptToken(DEFAULT_GITHUB_TOKEN, adminPasswordCache);
       }
       sessionStorage.setItem('song_repo_is_admin', 'true');
       checkAdminAuth(async () => {
@@ -2452,8 +2455,23 @@
     const DEFAULT_GITHUB_REPO = 'blessedcotw/SongRepo_userdata';
     const DEFAULT_GITHUB_TOKEN = 'IDkQITYtCydTRG0HdhMsGQoLAQ4CQXZOLwMcPQ59BBRYb0ZHIwQKKBY4LWd6dgRMCgAuHgsuMz8AB2pydWIiKhd/JzsEfnB4ETs1MAgXB2F9YWRxEwUdJRU7YxJr';
     const DEFAULT_GITHUB_BRANCH = 'main';
+    const ADMIN_PASSWORD_HASH = 'd0754bdf5c1e86be08dafff744e9f481cbba6c48d5549ada18ebd27f28fdc266';
 
     let decryptedToken = null;
+    let adminPasswordCache = null;
+
+    async function hashPassword(password) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(password);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function verifyPassword(password) {
+      const hash = await hashPassword(password);
+      return hash === ADMIN_PASSWORD_HASH;
+    }
 
     function decryptToken(b64, key) {
       try {
@@ -2516,20 +2534,23 @@
 
     async function checkAdminAuth(callback) {
       if (sessionStorage.getItem('song_repo_is_admin') === 'true') {
-        if (!decryptedToken) {
-          decryptedToken = decryptToken(DEFAULT_GITHUB_TOKEN, 'GPdICOTW2026');
+        if (!decryptedToken && adminPasswordCache) {
+          decryptedToken = decryptToken(DEFAULT_GITHUB_TOKEN, adminPasswordCache);
         }
         callback();
         return;
       }
 
       const password = await promptPassword('Masukkan kata sandi Admin untuk melanjutkan:');
-      if (password === 'GPdICOTW2026') {
+      if (password === null) return;
+      const isValid = await verifyPassword(password);
+      if (isValid) {
+        adminPasswordCache = password;
         sessionStorage.setItem('song_repo_is_admin', 'true');
-        decryptedToken = decryptToken(DEFAULT_GITHUB_TOKEN, 'GPdICOTW2026');
+        decryptedToken = decryptToken(DEFAULT_GITHUB_TOKEN, adminPasswordCache);
         showToast('Login Admin berhasil.');
         callback();
-      } else if (password !== null) {
+      } else {
         alert('Kata sandi salah! Akses ditolak.');
       }
     }
@@ -2542,8 +2563,8 @@
       if (localToken) return localToken;
 
       if (sessionStorage.getItem('song_repo_is_admin') === 'true') {
-        if (!decryptedToken) {
-          decryptedToken = decryptToken(DEFAULT_GITHUB_TOKEN, 'GPdICOTW2026');
+        if (!decryptedToken && adminPasswordCache) {
+          decryptedToken = decryptToken(DEFAULT_GITHUB_TOKEN, adminPasswordCache);
         }
         return decryptedToken;
       }
