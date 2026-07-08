@@ -246,17 +246,24 @@
     }
 
     .clear-btn {
-      background: none;
+      background: var(--bg-hover);
       border: none;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 10px;
       color: var(--ink-soft);
-      padding: 0 4px;
+      transition: all 0.2s ease;
       line-height: 1;
     }
 
     .clear-btn:hover {
-      color: var(--indigo-deep);
+      background: var(--rule);
+      color: var(--ink);
     }
 
     .search .hint-small {
@@ -268,21 +275,27 @@
 
     .tabs {
       display: flex;
+      flex-wrap: wrap;
       gap: 6px;
       margin-bottom: 12px;
     }
 
     .tab {
       font-family: 'Roboto Mono', monospace;
-      font-size: 11px;
+      font-size: 10px;
       letter-spacing: .03em;
       text-transform: uppercase;
-      padding: 7px 12px;
+      padding: 6px 12px;
       border: 1px solid var(--rule);
       border-radius: 999px;
       background: var(--white);
       cursor: pointer;
       color: var(--ink-soft);
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
     }
 
     .tab.active {
@@ -292,8 +305,18 @@
     }
 
     .tab .count {
-      opacity: .65;
-      margin-left: 3px;
+      font-size: 9px;
+      font-weight: 600;
+      background: var(--bg-hover);
+      color: var(--ink-soft);
+      padding: 1px 5px;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .tab.active .count {
+      background: rgba(255, 255, 255, 0.22);
+      color: var(--white);
     }
 
     .song-list {
@@ -307,9 +330,17 @@
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      padding: 11px 4px;
+      padding: 11px 8px;
       border-bottom: 1px solid var(--rule);
       cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      border-radius: 4px;
+      margin: 1px 0;
+    }
+
+    .song-row:hover {
+      background: var(--bg-hover);
+      padding-left: 12px;
     }
 
     .song-row:hover .song-title {
@@ -430,6 +461,17 @@
       background: var(--indigo-deep);
       color: var(--white);
       padding: 9px 16px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .btn:hover {
+      transform: translateY(-1.5px);
+      box-shadow: 0 4px 12px rgba(37, 71, 168, 0.15);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+      box-shadow: none;
     }
 
     .btn.secondary {
@@ -500,12 +542,25 @@
       gap: 7px;
     }
 
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
     .cart-item {
       background: var(--white);
       border: 1px solid var(--rule);
       border-radius: var(--radius);
       padding: 10px 12px;
       cursor: grab;
+      animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      transition: all 0.2s ease;
     }
 
     .cart-item.dragging {
@@ -699,16 +754,23 @@
       position: fixed;
       inset: 0;
       background: rgba(29, 39, 64, .45);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
       display: flex;
       align-items: flex-start;
       justify-content: center;
       padding: 5vh 20px;
       z-index: 50;
       overflow-y: auto;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+      opacity: 1;
+      visibility: visible;
     }
 
     .overlay.hidden {
-      display: none;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
     }
 
     .editor {
@@ -718,6 +780,12 @@
       border-radius: 4px;
       box-shadow: 0 30px 60px -20px rgba(0, 0, 0, .4);
       overflow: hidden;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      transform: scale(1);
+    }
+
+    .overlay.hidden .editor {
+      transform: scale(0.95);
     }
 
     .editor .ehead {
@@ -963,10 +1031,13 @@
         <button id="clearSearchBtn" class="clear-btn" style="display: none;">✕</button>
       </div>
 
+
+
       <div class="tabs" id="tabs">
         <div class="tab active" data-tab="lagu">Lagu <span class="count" id="countLagu">0</span></div>
         <div class="tab" data-tab="animasi">Animasi <span class="count" id="countAnimasi">0</span></div>
         <div class="tab" data-tab="chord">Chord <span class="count" id="countChord">0</span></div>
+        <div class="tab" data-tab="manual">user-generated <span class="count" id="countManual">0</span></div>
       </div>
 
       <div class="song-list" id="songList"></div>
@@ -1004,16 +1075,18 @@
 
       <div class="cart-list" id="cartList"></div>
 
-      <button class="btn dashed" id="addBreakBtn">+ Tambah Break / Pembatas Sesi</button>
+      <div style="display: flex; gap: 8px; margin-top: 12px; width: 100%;">
+        <button class="btn dashed" id="addBreakBtn" style="flex: 1; font-family: 'Inter'; font-size: 13px; padding: 10px;">+ Tambah Break</button>
+        <button class="btn dashed" id="openManualSongBtn" style="flex: 1; font-family: 'Inter'; font-size: 13px; padding: 10px;">+ Tambah Lagu Baru</button>
+      </div>
     </aside>
 
     <section class="pane preview-pane">
       <h2 class="title">Pratinjau</h2>
       <div class="sub">Tampilan lagu-lagu sesuai urutan di daftar pujian.</div>
       <div class="preview-controls">
-        <label class="chord-toggle"><input type="checkbox" id="chordToggle"> Tampilkan Chord <em>(Jika
-            tersedia)</em></label>
-        <label class="chord-toggle"><input type="checkbox" id="notesToggle"> Tampilkan Terjemahan</label>
+        <label class="chord-toggle"><input type="checkbox" id="chordToggle"> Tampilkan Chord <em>(jika tersedia)</em></label>
+        <label class="chord-toggle"><input type="checkbox" id="notesToggle"> Tampilkan Terjemahan <em>(jika tersedia)</em></label>
         <label class="chord-toggle"><input type="checkbox" id="capsToggle"> Lirik Kapital</label>
       </div>
       <div class="preview-sheet" id="previewSheet"></div>
@@ -1035,9 +1108,93 @@
         </p>
         <div id="sectionList"></div>
       </div>
-      <div class="efoot">
+      <div class="efoot" style="display: flex; gap: 8px; justify-content: flex-end; width: 100%;">
         <button class="btn ghost" id="cancelEditor">Batal</button>
+        <button class="btn ghost" id="deleteSongContentBtn" style="color: var(--red); border-color: var(--red); display: none;">🗑️ Hapus</button>
+        <button class="btn ghost" id="editSongContentBtn" style="color: var(--indigo-deep); border-color: var(--indigo-deep);">✏️ Edit Lagu</button>
         <button class="btn" id="saveEditor">Tambah ke Daftar Pujian</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="manualSongModal">
+    <div class="editor" style="max-width: 600px; width: 95%;">
+      <div class="ehead">
+        <div>
+          <div class="eyebrow">Daftar Pujian</div>
+          <h2>Tambah Lagu Baru</h2>
+        </div>
+        <button class="close-x" id="closeManualSongModal">✕</button>
+      </div>
+      <div class="ebody" style="display: flex; flex-direction: column; gap: 16px; max-height: 60vh; overflow-y: auto;">
+        <div class="field" style="margin-bottom: 0;">
+          <label for="manualSongTitle" style="font-weight: 600;">Judul</label>
+          <input type="text" id="manualSongTitle" placeholder="Ketik judul lagu..." 
+            style="width: 100%; padding: 10px; border: 1px solid var(--rule); border-radius: var(--radius); font-family: 'Inter'; font-size: 14px; background: var(--white); outline: none; color: var(--ink);">
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <label style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft);">Section & Lirik</label>
+          <div id="manualSectionsContainer" style="display: flex; flex-direction: column; gap: 14px;">
+            <!-- Dynamic sections injected here -->
+          </div>
+        </div>
+
+        <button class="btn dashed" id="addManualSectionBtn" style="width: 100%; padding: 8px; font-family: 'Inter'; font-size: 13px; margin-top: 4px;">+ Tambah Section</button>
+      </div>
+      <div class="efoot">
+        <button class="btn ghost" id="cancelManualSong">Batal</button>
+        <button class="btn" id="saveManualSong" style="background: var(--indigo-deep); color: var(--white);">Simpan Lagu</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="settingsModal">
+    <div class="editor" style="max-width: 450px; width: 90%;">
+      <div class="ehead">
+        <div>
+          <div class="eyebrow">Aplikasi</div>
+          <h2>Pengaturan Cloud Sync</h2>
+        </div>
+        <button class="close-x" id="closeSettingsModal">✕</button>
+      </div>
+      <div class="ebody" style="display: flex; flex-direction: column; gap: 16px;">
+        <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin: 0;">
+          Hubungkan aplikasi ke repositori data GitHub terpisah untuk mencadangkan dan menyinkronkan lagu manual secara otomatis.
+        </p>
+        <div class="field" style="margin-bottom: 0;">
+          <label for="settingsGithubRepo" style="font-weight: 600;">Nama Repositori GitHub</label>
+          <input type="text" id="settingsGithubRepo" placeholder="Contoh: username/nama-repo" 
+            style="width: 100%; padding: 8px 10px; border: 1px solid var(--rule); border-radius: var(--radius); font-family: 'Inter'; font-size: 13px; background: var(--white); outline: none; color: var(--ink);">
+        </div>
+        <div class="field" style="margin-bottom: 0;">
+          <label for="settingsGithubToken" style="font-weight: 600;">GitHub Personal Access Token (PAT)</label>
+          <input type="password" id="settingsGithubToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" 
+            style="width: 100%; padding: 8px 10px; border: 1px solid var(--rule); border-radius: var(--radius); font-family: 'Roboto Mono', monospace; font-size: 13px; background: var(--white); outline: none; color: var(--ink);">
+        </div>
+        <div class="field" style="margin-bottom: 0;">
+          <label for="settingsGithubBranch" style="font-weight: 600;">Branch</label>
+          <input type="text" id="settingsGithubBranch" placeholder="main" 
+            style="width: 100%; padding: 8px 10px; border: 1px solid var(--rule); border-radius: var(--radius); font-family: 'Inter'; font-size: 13px; background: var(--white); outline: none; color: var(--ink);">
+        </div>
+      </div>
+      <div class="efoot">
+        <button class="btn ghost" id="cancelSettings">Batal</button>
+        <button class="btn" id="saveSettings" style="background: var(--indigo-deep); color: var(--white);">Simpan Pengaturan</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="passwordModal" style="z-index: 2000;">
+    <div class="editor" style="max-width: 320px; width: 90%; text-align: center; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+      <div style="font-size: 24px; margin-bottom: 8px;">🔒</div>
+      <h3 style="margin-bottom: 6px; font-family: 'Inter'; font-weight: 700; color: var(--ink);">Konfirmasi Admin</h3>
+      <p id="passwordPromptText" style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Masukkan kata sandi untuk melanjutkan.</p>
+      <input type="password" id="adminPasswordInput" placeholder="Kata sandi..." 
+        style="width: 100%; padding: 8px 12px; border: 1px solid var(--rule); border-radius: var(--radius); font-family: 'Inter'; font-size: 14px; background: var(--white); outline: none; color: var(--ink); text-align: center; margin-bottom: 16px;">
+      <div style="display: flex; gap: 8px; justify-content: center; width: 100%;">
+        <button class="btn ghost" id="cancelPasswordBtn" style="padding: 6px 16px; font-size: 13px;">Batal</button>
+        <button class="btn" id="confirmPasswordBtn" style="background: var(--indigo-deep); color: var(--white); padding: 6px 16px; font-size: 13px;">Konfirmasi</button>
       </div>
     </div>
   </div>
@@ -1054,7 +1211,8 @@
       showNotes: false,
       showCaps: false,
       cart: [],
-      editing: { songId: null, cartId: null, working: [] }
+      editing: { songId: null, cartId: null, working: [] },
+      editingManualSong: { id: null, cloudFilename: null }
     };
     let dragSrcIndex = null;
     let selectedEventNameVal = 'Ibadah Minggu Pagi';
@@ -1217,18 +1375,32 @@
     }
 
     async function scanLibrary() {
-      const cached = localStorage.getItem(CACHE_KEY);
+      let cached = null;
+      try {
+        cached = localStorage.getItem(CACHE_KEY);
+      } catch (e) {
+        console.warn('LocalStorage tidak tersedia:', e);
+      }
       if (cached) {
         try {
           const parsedCache = JSON.parse(cached);
           const age = Date.now() - parsedCache.timestamp;
           if (age < CACHE_DURATION && Array.isArray(parsedCache.songs) && parsedCache.songs.length > 0) {
             state.songs = parsedCache.songs;
+            
+            // Merge manual songs
+            const manualSongs = loadManualSongsFromStorage();
+            const existingIds = new Set(state.songs.map(s => s.id));
+            manualSongs.forEach(s => {
+              if (!existingIds.has(s.id)) state.songs.push(s);
+            });
+
             const statusEl = document.getElementById('scanStatus');
             statusEl.textContent = `${state.songs.length} lagu dimuat (dari cache)`;
             showCacheInfo(parsedCache.timestamp);
             renderSongList();
             renderTabCounts();
+            syncCloudSongs();
             return;
           }
         } catch (e) {
@@ -1302,18 +1474,25 @@
       }
 
       state.songs = songs;
-      statusEl.textContent = `${songs.length} lagu dimuat`;
+      // Merge manual songs
+      const manualSongs = loadManualSongsFromStorage();
+      const existingIds = new Set(state.songs.map(s => s.id));
+      manualSongs.forEach(s => {
+        if (!existingIds.has(s.id)) state.songs.push(s);
+      });
+      statusEl.textContent = `${state.songs.length} lagu dimuat`;
 
       const timestamp = Date.now();
+      showCacheInfo(timestamp);
       try {
         localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp, songs }));
-        showCacheInfo(timestamp);
       } catch (e) {
         console.warn('Gagal menyimpan cache ke localStorage', e);
       }
 
       renderSongList();
       renderTabCounts();
+      syncCloudSongs();
     }
 
     document.getElementById('refreshCacheBtn').addEventListener('click', async () => {
@@ -1339,9 +1518,10 @@
 
     /* ============================= RENDER: LIBRARY (list view) ============================= */
     function renderTabCounts() {
-      document.getElementById('countLagu').textContent = state.songs.filter(s => s.groups.includes('lagu')).length;
-      document.getElementById('countAnimasi').textContent = state.songs.filter(s => s.groups.includes('animasi')).length;
-      document.getElementById('countChord').textContent = state.songs.filter(s => s.groups.includes('chord')).length;
+      document.getElementById('countLagu').textContent = state.songs.filter(s => !s.isManual && s.groups.includes('lagu')).length;
+      document.getElementById('countAnimasi').textContent = state.songs.filter(s => !s.isManual && s.groups.includes('animasi')).length;
+      document.getElementById('countChord').textContent = state.songs.filter(s => !s.isManual && s.groups.includes('chord')).length;
+      document.getElementById('countManual').textContent = state.songs.filter(s => s.isManual).length;
     }
 
     function renderSongList() {
@@ -1349,7 +1529,11 @@
       const q = state.search.trim().toLowerCase();
       const searching = !!q;
       const list = state.songs
-        .filter(s => searching || s.groups.includes(state.activeTab))
+        .filter(s => {
+          if (searching) return true;
+          if (state.activeTab === 'manual') return s.isManual;
+          return !s.isManual && s.groups.includes(state.activeTab);
+        })
         .filter(s => !q || s.title.toLowerCase().includes(q) || s.searchText.includes(q));
 
       if (list.length === 0) {
@@ -1360,16 +1544,23 @@
         return;
       }
 
-      const groupLabel = g => g === 'animasi' ? 'Animasi' : g === 'chord' ? 'Chord' : 'Lagu';
+      const groupLabel = g => g === 'animasi' ? 'Animasi' : g === 'chord' ? 'Chord' : g === 'manual' ? 'user-generated' : 'Lagu';
       wrap.innerHTML = list.map(s => `
-    <div class="song-row" data-song-id="${s.id}">
-      <span class="song-title">${escapeHtml(s.title)}${s.groups.map(g => `<span class="group-tag ${g}">${groupLabel(g)}</span>`).join('')}</span>
-      <span class="song-meta">${s.sections.length} bagian</span>
+    <div class="song-row" data-song-id="${s.id}" style="display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; flex-direction: column; gap: 2px; flex: 1; text-align: left;">
+        <span class="song-title">${escapeHtml(s.title)}${s.groups.map(g => `<span class="group-tag ${g}">${groupLabel(g)}</span>`).join('')}</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="song-meta">${s.sections.length} bagian</span>
+      </div>
     </div>
   `).join('');
 
       wrap.querySelectorAll('.song-row').forEach(row => {
-        row.addEventListener('click', () => openEditor(row.dataset.songId, null));
+        row.addEventListener('click', () => {
+          const songId = row.dataset.songId;
+          openEditor(songId, null);
+        });
       });
     }
 
@@ -1422,6 +1613,7 @@
       const groupLabel = g => g === 'animasi' ? 'Animasi' : g === 'chord' ? 'Chord' : 'Lagu';
       document.getElementById('editorGroupLabel').textContent = song.groups.map(groupLabel).join(' · ');
       renderSectionList();
+      document.getElementById('deleteSongContentBtn').style.display = song.isManual ? 'inline-block' : 'none';
       document.getElementById('overlay').classList.remove('hidden');
       document.getElementById('saveEditor').textContent = cartId ? 'Simpan Perubahan' : 'Tambah ke Daftar Pujian';
     }
@@ -1472,6 +1664,31 @@
     document.getElementById('overlay').addEventListener('click', (e) => {
       if (e.target.id === 'overlay') closeEditor();
     });
+    document.getElementById('editSongContentBtn').addEventListener('click', () => {
+      const songId = state.editing.songId;
+      if (!songId) return;
+      closeEditor();
+      checkAdminAuth(() => {
+        openManualSongForEditing(songId);
+      });
+    });
+    document.getElementById('deleteSongContentBtn').addEventListener('click', async () => {
+      const songId = state.editing.songId;
+      if (!songId) return;
+      const pwdConfirm = await promptPassword('Masukkan kata sandi Admin untuk mengonfirmasi penghapusan lagu:');
+      if (pwdConfirm !== 'GPdICOTW2026') {
+        if (pwdConfirm !== null) alert('Kata sandi salah! Aksi hapus dibatalkan.');
+        return;
+      }
+      if (!decryptedToken) {
+        decryptedToken = decryptToken(DEFAULT_GITHUB_TOKEN, 'GPdICOTW2026');
+      }
+      sessionStorage.setItem('song_repo_is_admin', 'true');
+      checkAdminAuth(async () => {
+        await deleteManualSong(songId);
+        closeEditor();
+      });
+    });
     function closeEditor() {
       document.getElementById('overlay').classList.add('hidden');
       state.editing = { songId: null, cartId: null, working: [] };
@@ -1498,6 +1715,7 @@
           songId: song.id,
           title: song.title,
           groups: song.groups,
+          isManual: song.isManual || false,
           sections: chosen
         });
         showToast('Ditambahkan ke daftar pujian.');
@@ -1680,6 +1898,9 @@
           }
           songNum++;
           html += `<div class="preview-song"><h4>${songNum}. ${escapeHtml(item.title)}</h4>`;
+          if (item.isManual) {
+            html += `<div class="preview-song-sub" style="font-size: 10px; color: var(--ink-soft); font-style: italic; margin-top: -6px; margin-bottom: 8px; font-family: 'Inter'; font-weight: 500;">user generated</div>`;
+          }
           item.sections.forEach(sec => {
             html += `<div class="preview-sec"><div class="lbl">${escapeHtml(sec.label)}</div><div class="txt">${sectionLinesHtml(sec.lines, state.showChords, state.showNotes, state.showCaps)}</div></div>`;
           });
@@ -1800,6 +2021,9 @@
           songNum++;
           ensureSpace(bodySize + 8);
           printWrapped(`${songNum}. ${item.title}`, 13, 'times', 'bold', 4);
+          if (item.isManual) {
+            printWrapped('user generated', 9, 'times', 'italic', 2);
+          }
 
           item.sections.forEach(sec => {
             ensureSpace(bodySize + 4);
@@ -1847,6 +2071,758 @@
         exportBtn.disabled = false;
         exportBtn.textContent = originalText;
       }
+    });
+
+    /* ============================= MANUAL SONG MANAGEMENT ============================= */
+    function convertToSongFormat(rawText) {
+      const lines = rawText.replace(/\r/g, '').split('\n');
+      const processed = [];
+      
+      function isChordLine(str) {
+        const clean = str.trim();
+        if (!clean) return false;
+        if (!/[A-G]/i.test(clean)) return false;
+        if (!/^[A-G0-9\s#b\+\/\(\)\-majindusolrtx]+$/i.test(clean)) return false;
+        const tokens = clean.split(/\s+/);
+        for (const token of tokens) {
+          if (token.length > 5) return false;
+          if (!/^[A-G][b#]?(m|maj|min|dim|aug|sus|add|m7|maj7|min7|sus4|sus2)?\d*(\/[A-G][b#]?)?$/i.test(token)) return false;
+        }
+        return true;
+      }
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (isChordLine(line)) {
+          processed.push(`[CHORD]${line}`);
+        } else {
+          processed.push(line);
+        }
+      }
+      return processed.join('\n');
+    }
+
+    function saveManualSongToStorage(song) {
+      try {
+        const listStr = localStorage.getItem('song_repo_manual_songs') || '[]';
+        const list = JSON.parse(listStr);
+        list.push(song);
+        localStorage.setItem('song_repo_manual_songs', JSON.stringify(list));
+      } catch (e) {
+        console.warn('Gagal menyimpan lagu manual ke localStorage', e);
+      }
+    }
+
+    function loadManualSongsFromStorage() {
+      try {
+        const listStr = localStorage.getItem('song_repo_manual_songs') || '[]';
+        return JSON.parse(listStr);
+      } catch (e) {
+        console.warn('Gagal membaca lagu manual dari localStorage', e);
+        return [];
+      }
+    }
+
+    function updateManualSongInStorage(updatedSong) {
+      try {
+        const listStr = localStorage.getItem('song_repo_manual_songs') || '[]';
+        let list = JSON.parse(listStr);
+        const idx = list.findIndex(s => s.id === updatedSong.id);
+        if (idx !== -1) {
+          list[idx] = updatedSong;
+        } else {
+          list.push(updatedSong);
+        }
+        localStorage.setItem('song_repo_manual_songs', JSON.stringify(list));
+      } catch (e) {
+        console.warn('Gagal memperbarui lagu manual di localStorage', e);
+      }
+    }
+
+    function reconstructSectionLyrics(lines) {
+      return lines.map(l => {
+        let lineText = '';
+        if (l.chord) {
+          lineText += l.chord + '\n';
+        }
+        lineText += l.text;
+        if (l.note) {
+          lineText += `\n[NOTES]${l.note}`;
+        }
+        return lineText;
+      }).join('\n');
+    }
+
+    function openManualSongForEditing(songId) {
+      const song = state.songs.find(s => s.id === songId);
+      if (!song) return;
+
+      state.editingManualSong = {
+        id: song.isManual ? song.id : null,
+        cloudFilename: song.cloudFilename || null
+      };
+
+      manualSongTitle.value = song.title;
+      manualSectionsContainer.innerHTML = '';
+
+      song.sections.forEach(sec => {
+        const rawLyrics = reconstructSectionLyrics(sec.lines);
+        manualSectionsContainer.appendChild(createManualSectionRow(sec.label, rawLyrics));
+      });
+
+      manualSongModal.classList.remove('hidden');
+      manualSongTitle.focus();
+
+      const modalTitle = manualSongModal.querySelector('h2');
+      if (song.isManual) {
+        modalTitle.textContent = 'Edit Lagu (user-generated)';
+      } else {
+        modalTitle.textContent = 'Salin & Edit Lagu (ke user-generated)';
+      }
+    }
+
+    async function deleteManualSong(songId) {
+      if (!confirm('Apakah Anda yakin ingin menghapus lagu ini secara permanen?')) return;
+      const song = state.songs.find(s => s.id === songId);
+      if (!song) return;
+
+      const githubRepo = getGithubRepo();
+      const githubToken = getGithubToken();
+
+      try {
+        if (song.cloudFilename && githubRepo && githubToken) {
+          showToast('Menghapus lagu dari GitHub Cloud...');
+          await deleteSongFromGithub(song.cloudFilename);
+        }
+      } catch (e) {
+        console.warn('Gagal menghapus dari GitHub Cloud:', e);
+      }
+
+      try {
+        // Remove from memory
+        state.songs = state.songs.filter(s => s.id !== songId);
+        // Remove from localStorage
+        const listStr = localStorage.getItem('song_repo_manual_songs') || '[]';
+        let list = JSON.parse(listStr);
+        list = list.filter(s => s.id !== songId);
+        localStorage.setItem('song_repo_manual_songs', JSON.stringify(list));
+        // Remove from cart if active
+        state.cart = state.cart.filter(item => item.id !== songId && item.songId !== songId);
+        // Refresh UI
+        renderSongList();
+        renderTabCounts();
+        renderCart();
+        renderPreview();
+        showToast('Lagu berhasil dihapus.');
+      } catch (e) {
+        console.error('Gagal menghapus lagu manual:', e);
+        showToast('Gagal menghapus lagu.');
+      }
+    }
+
+    // Modal Control & Dynamic Sections
+    const openManualSongBtn = document.getElementById('openManualSongBtn');
+    const manualSongModal = document.getElementById('manualSongModal');
+    const closeManualSongModal = document.getElementById('closeManualSongModal');
+    const cancelManualSong = document.getElementById('cancelManualSong');
+    const saveManualSong = document.getElementById('saveManualSong');
+    const manualSongTitle = document.getElementById('manualSongTitle');
+    const manualSectionsContainer = document.getElementById('manualSectionsContainer');
+    const addManualSectionBtn = document.getElementById('addManualSectionBtn');
+
+    // Create a new empty section row
+    function createManualSectionRow(labelVal = '', lyricsVal = '') {
+      const row = document.createElement('div');
+      row.className = 'manual-section-row';
+      row.style.cssText = 'border: 1px solid var(--rule); padding: 12px; border-radius: var(--radius); background: var(--paper); display: flex; flex-direction: column; gap: 8px; position: relative;';
+      
+      row.innerHTML = `
+        <button class="btn-remove-section" style="position: absolute; top: 8px; right: 8px; background: none; border: none; color: var(--red); cursor: pointer; font-size: 14px; padding: 4px;">✕</button>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <label style="font-size: 11px; font-weight: 600; color: var(--ink);">Section</label>
+          <input type="text" class="manual-section-label" placeholder="Contoh: Bait 1, Reff, Bridge..." value="${labelVal}"
+            style="width: 100%; padding: 6px 8px; border: 1px solid var(--rule); border-radius: var(--radius); font-family: 'Inter'; font-size: 13px; background: var(--white); outline: none; color: var(--ink);">
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <label style="font-size: 11px; font-weight: 600; color: var(--ink);">Lirik</label>
+          <textarea class="manual-section-lyrics" placeholder="Ketik lirik atau chord..."
+            style="width: 100%; min-height: 80px; padding: 8px; border: 1px solid var(--rule); border-radius: var(--radius); font-family: 'Roboto Mono', monospace; font-size: 12px; background: var(--white); outline: none; resize: vertical; line-height: 1.4; color: var(--ink);">${lyricsVal}</textarea>
+        </div>
+      `;
+
+      // Handle delete section click
+      row.querySelector('.btn-remove-section').addEventListener('click', () => {
+        const rowsCount = manualSectionsContainer.querySelectorAll('.manual-section-row').length;
+        if (rowsCount <= 1) {
+          alert('Lagu harus memiliki minimal satu section.');
+          return;
+        }
+        row.remove();
+      });
+
+      return row;
+    }
+
+    openManualSongBtn.addEventListener('click', () => {
+      checkAdminAuth(() => {
+        state.editingManualSong = { id: null, cloudFilename: null };
+        manualSongTitle.value = '';
+        manualSectionsContainer.innerHTML = '';
+        manualSectionsContainer.appendChild(createManualSectionRow());
+        manualSongModal.classList.remove('hidden');
+        manualSongTitle.focus();
+        manualSongModal.querySelector('h2').textContent = 'Tambah Lagu Baru';
+      });
+    });
+
+    addManualSectionBtn.addEventListener('click', () => {
+      manualSectionsContainer.appendChild(createManualSectionRow());
+      // Scroll container to bottom
+      const body = manualSongModal.querySelector('.ebody');
+      body.scrollTop = body.scrollHeight;
+    });
+
+    function closeManualModal() {
+      manualSongModal.classList.add('hidden');
+    }
+
+    closeManualSongModal.addEventListener('click', closeManualModal);
+    cancelManualSong.addEventListener('click', closeManualModal);
+
+    saveManualSong.addEventListener('click', async () => {
+      const title = manualSongTitle.value.trim();
+      if (!title) {
+        alert('Judul lagu tidak boleh kosong.');
+        return;
+      }
+
+      const rows = manualSectionsContainer.querySelectorAll('.manual-section-row');
+      if (rows.length === 0) {
+        alert('Lagu harus memiliki minimal satu section.');
+        return;
+      }
+
+      const parsedSections = [];
+      const tagCounts = {};
+      let hasChords = false;
+      const rawTextParts = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const label = rows[i].querySelector('.manual-section-label').value.trim();
+        const lyrics = rows[i].querySelector('.manual-section-lyrics').value.trim();
+
+        if (!label) {
+          alert(`Nama section ke-${i + 1} tidak boleh kosong.`);
+          return;
+        }
+        if (!lyrics) {
+          alert(`Lirik section "${label}" tidak boleh kosong.`);
+          return;
+        }
+
+        rawTextParts.push(`[${label}]`);
+        rawTextParts.push(lyrics);
+        rawTextParts.push('');
+
+        const processedText = convertToSongFormat(lyrics);
+        const rawLines = processedText.replace(/\r/g, '').split('\n');
+        const lines = [];
+        let pendingChord = null;
+        let pendingNote = null;
+
+        for (const line of rawLines) {
+          const chordMatch = line.match(/^\s*\[CHORD\](.*)$/i);
+          if (chordMatch) {
+            pendingChord = chordMatch[1].replace(/\s+$/, '');
+            continue;
+          }
+          const noteMatch = line.match(/^\s*\[NOTES?\](.*)$/i);
+          if (noteMatch) {
+            pendingNote = noteMatch[1].trim();
+            continue;
+          }
+          lines.push({ text: line, chord: pendingChord || null, note: pendingNote || null });
+          if (pendingChord) hasChords = true;
+          pendingChord = null;
+          pendingNote = null;
+        }
+
+        const tag = label.toUpperCase();
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        const finalLabel = tagCounts[tag] > 1 ? `${cap(label)} ${tagCounts[tag]}` : cap(label);
+
+        parsedSections.push({
+          tag: tag,
+          label: finalLabel,
+          lines: lines
+        });
+      }
+
+      // Construct song object
+      const isEditing = state.editingManualSong && state.editingManualSong.id;
+      const songId = isEditing ? state.editingManualSong.id : uid();
+
+      const songRecord = {
+        id: songId,
+        title: title,
+        groups: ['manual'],
+        sections: parsedSections,
+        isManual: true,
+        searchText: (title + ' ' + parsedSections.flatMap(s => s.lines.map(l => l.text)).join(' ')).toLowerCase()
+      };
+      if (hasChords) {
+        songRecord.groups.push('chord');
+      }
+
+      // If GitHub Cloud is configured, sync it online
+      const githubRepo = getGithubRepo();
+      const githubToken = getGithubToken();
+      
+      if (githubRepo && githubToken) {
+        showToast(isEditing ? 'Memperbarui lagu di GitHub Cloud...' : 'Mengunggah lagu ke GitHub Cloud...');
+        saveManualSong.disabled = true;
+        saveManualSong.textContent = 'Menyimpan...';
+        try {
+          const fullRawText = `title: ${title}\n\n` + rawTextParts.join('\n');
+          const cloudFilename = await uploadSongToGithub(songRecord, fullRawText, state.editingManualSong.cloudFilename);
+          songRecord.cloudFilename = cloudFilename;
+          showToast(isEditing ? 'Lagu berhasil diperbarui di GitHub Cloud.' : 'Lagu berhasil disimpan ke GitHub Cloud.');
+        } catch (e) {
+          console.error(e);
+          alert('Gagal menyinkronkan ke GitHub Cloud. Lagu disimpan secara lokal saja.');
+          if (isEditing) {
+            updateManualSongInStorage(songRecord);
+          } else {
+            saveManualSongToStorage(songRecord);
+          }
+        } finally {
+          saveManualSong.disabled = false;
+          saveManualSong.textContent = 'Simpan Lagu';
+        }
+      } else {
+        if (isEditing) {
+          updateManualSongInStorage(songRecord);
+        } else {
+          saveManualSongToStorage(songRecord);
+        }
+      }
+
+      // Update local state memory
+      if (isEditing) {
+        const idx = state.songs.findIndex(s => s.id === songId);
+        if (idx !== -1) {
+          state.songs[idx] = songRecord;
+        }
+        // Also update existing item in cart if active
+        state.cart.forEach(item => {
+          if (item.songId === songId) {
+            item.title = title;
+            item.groups = songRecord.groups;
+            item.sections = parsedSections.map(s => ({ ...s }));
+          }
+        });
+      } else {
+        state.songs.push(songRecord);
+
+        // Add directly to cart (playlist)
+        const cartItem = {
+          cartId: uid(),
+          songId: songId,
+          title: title,
+          type: 'song',
+          groups: songRecord.groups,
+          isManual: true,
+          sections: parsedSections.map(s => ({ ...s }))
+        };
+        state.cart.push(cartItem);
+      }
+
+      // Refresh everything
+      renderSongList();
+      renderTabCounts();
+      renderCart();
+      renderPreview();
+      closeManualModal();
+      if (!githubRepo || !githubToken) {
+        showToast('Lagu manual berhasil ditambahkan secara lokal.');
+      }
+    });
+
+    /* ============================= GITHUB CLOUD SINKRONISASI ============================= */
+    const DEFAULT_GITHUB_REPO = 'blessedcotw/SongRepo_userdata';
+    const DEFAULT_GITHUB_TOKEN = 'IDkQITYtCydTRG0HdhMsGQoLAQ4CQXZOLwMcPQ59BBRYb0ZHIwQKKBY4LWd6dgRMCgAuHgsuMz8AB2pydWIiKhd/JzsEfnB4ETs1MAgXB2F9YWRxEwUdJRU7YxJr';
+    const DEFAULT_GITHUB_BRANCH = 'main';
+
+    let decryptedToken = null;
+
+    function decryptToken(b64, key) {
+      try {
+        const encrypted = atob(b64);
+        let output = '';
+        for (let i = 0; i < encrypted.length; i++) {
+          const charCode = encrypted.charCodeAt(i) ^ key.charCodeAt(i % key.length);
+          output += String.fromCharCode(charCode);
+        }
+        return output;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function promptPassword(messageText) {
+      return new Promise((resolve) => {
+        const modal = document.getElementById('passwordModal');
+        const promptText = document.getElementById('passwordPromptText');
+        const input = document.getElementById('adminPasswordInput');
+        const confirmBtn = document.getElementById('confirmPasswordBtn');
+        const cancelBtn = document.getElementById('cancelPasswordBtn');
+
+        promptText.textContent = messageText;
+        input.value = '';
+        modal.classList.remove('hidden');
+        input.focus();
+
+        function handleConfirm() {
+          const val = input.value;
+          cleanup();
+          resolve(val);
+        }
+
+        function handleCancel() {
+          cleanup();
+          resolve(null);
+        }
+
+        function handleKeydown(e) {
+          if (e.key === 'Enter') {
+            handleConfirm();
+          } else if (e.key === 'Escape') {
+            handleCancel();
+          }
+        }
+
+        function cleanup() {
+          modal.classList.add('hidden');
+          confirmBtn.removeEventListener('click', handleConfirm);
+          cancelBtn.removeEventListener('click', handleCancel);
+          input.removeEventListener('keydown', handleKeydown);
+        }
+
+        confirmBtn.addEventListener('click', handleConfirm);
+        cancelBtn.addEventListener('click', handleCancel);
+        input.addEventListener('keydown', handleKeydown);
+      });
+    }
+
+    async function checkAdminAuth(callback) {
+      if (sessionStorage.getItem('song_repo_is_admin') === 'true') {
+        if (!decryptedToken) {
+          decryptedToken = decryptToken(DEFAULT_GITHUB_TOKEN, 'GPdICOTW2026');
+        }
+        callback();
+        return;
+      }
+
+      const password = await promptPassword('Masukkan kata sandi Admin untuk melanjutkan:');
+      if (password === 'GPdICOTW2026') {
+        sessionStorage.setItem('song_repo_is_admin', 'true');
+        decryptedToken = decryptToken(DEFAULT_GITHUB_TOKEN, 'GPdICOTW2026');
+        showToast('Login Admin berhasil.');
+        callback();
+      } else if (password !== null) {
+        alert('Kata sandi salah! Akses ditolak.');
+      }
+    }
+
+    function getGithubRepo() {
+      return localStorage.getItem('song_repo_github_repo') || DEFAULT_GITHUB_REPO;
+    }
+    function getGithubToken() {
+      const localToken = localStorage.getItem('song_repo_github_token');
+      if (localToken) return localToken;
+
+      if (sessionStorage.getItem('song_repo_is_admin') === 'true') {
+        if (!decryptedToken) {
+          decryptedToken = decryptToken(DEFAULT_GITHUB_TOKEN, 'GPdICOTW2026');
+        }
+        return decryptedToken;
+      }
+      return null;
+    }
+    function getGithubBranch() {
+      return localStorage.getItem('song_repo_github_branch') || DEFAULT_GITHUB_BRANCH;
+    }
+
+    async function uploadSongToGithub(songRecord, processedText, existingFilename = null) {
+      const token = getGithubToken();
+      const repo = getGithubRepo();
+      const branch = getGithubBranch();
+      if (!token || !repo) return null;
+
+      const headers = {
+        'Authorization': `token ${token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      };
+
+      const filename = existingFilename || `manual_${uid()}_decoded.txt`;
+      const songPath = `library/${filename}`;
+      const songContentB64 = btoa(unescape(encodeURIComponent(processedText)));
+
+      let fileSha = null;
+      if (existingFilename) {
+        try {
+          const fileRes = await fetch(`https://api.github.com/repos/${repo}/contents/${songPath}?ref=${branch}`, { headers });
+          if (fileRes.ok) {
+            const fileData = await fileRes.json();
+            fileSha = fileData.sha;
+          }
+        } catch (e) {
+          console.warn('Gagal mendapatkan SHA file yang ada:', e);
+        }
+      }
+      
+      const uploadSongRes = await fetch(`https://api.github.com/repos/${repo}/contents/${songPath}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          message: existingFilename ? `Update manual song: ${songRecord.title}` : `Add manual song: ${songRecord.title}`,
+          content: songContentB64,
+          sha: fileSha || undefined,
+          branch
+        })
+      });
+
+      if (!uploadSongRes.ok) {
+        throw new Error(`Gagal mengunggah file lagu: ${uploadSongRes.statusText}`);
+      }
+
+      if (!existingFilename) {
+        let manifestSha = null;
+        let manifestList = [];
+        try {
+          const manifestRes = await fetch(`https://api.github.com/repos/${repo}/contents/library/library-manifest.json?ref=${branch}`, { headers });
+          if (manifestRes.ok) {
+            const manifestData = await manifestRes.json();
+            manifestSha = manifestData.sha;
+            const rawText = atob(manifestData.content);
+            manifestList = JSON.parse(rawText);
+          }
+        } catch (e) {
+          console.log("Manifest belum ada, akan membuat baru.");
+        }
+
+        if (!manifestList.includes(filename)) {
+          manifestList.push(filename);
+        }
+
+        const manifestContentB64 = btoa(JSON.stringify(manifestList, null, 2));
+        const updateManifestRes = await fetch(`https://api.github.com/repos/${repo}/contents/library/library-manifest.json`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({
+            message: `Update manifest for: ${songRecord.title}`,
+            content: manifestContentB64,
+            sha: manifestSha || undefined,
+            branch
+          })
+        });
+
+        if (!updateManifestRes.ok) {
+          throw new Error(`Gagal memperbarui manifest: ${updateManifestRes.statusText}`);
+        }
+      }
+
+      return filename;
+    }
+
+    async function deleteSongFromGithub(filename) {
+      const token = getGithubToken();
+      const repo = getGithubRepo();
+      const branch = getGithubBranch();
+      if (!token || !repo) return;
+
+      const headers = {
+        'Authorization': `token ${token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      };
+
+      let fileSha = null;
+      try {
+        const fileRes = await fetch(`https://api.github.com/repos/${repo}/contents/library/${filename}?ref=${branch}`, { headers });
+        if (fileRes.ok) {
+          const fileData = await fileRes.json();
+          fileSha = fileData.sha;
+        }
+      } catch (e) {}
+
+      if (fileSha) {
+        await fetch(`https://api.github.com/repos/${repo}/contents/library/${filename}`, {
+          method: 'DELETE',
+          headers,
+          body: JSON.stringify({
+            message: `Delete manual song: ${filename}`,
+            sha: fileSha,
+            branch
+          })
+        });
+      }
+
+      try {
+        const manifestRes = await fetch(`https://api.github.com/repos/${repo}/contents/library/library-manifest.json?ref=${branch}`, { headers });
+        if (manifestRes.ok) {
+          const manifestData = await manifestRes.json();
+          const rawText = atob(manifestData.content);
+          let manifestList = JSON.parse(rawText);
+          manifestList = manifestList.filter(f => f !== filename);
+          
+          await fetch(`https://api.github.com/repos/${repo}/contents/library/library-manifest.json`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({
+              message: `Remove from manifest: ${filename}`,
+              content: btoa(JSON.stringify(manifestList, null, 2)),
+              sha: manifestData.sha,
+              branch
+            })
+          });
+        }
+      } catch (e) {}
+    }
+
+    async function loadCloudSongs() {
+      const token = getGithubToken();
+      const repo = getGithubRepo();
+      const branch = getGithubBranch();
+      if (!repo) return [];
+
+      const headers = {};
+      if (token) {
+        headers['Authorization'] = `token ${token}`;
+      }
+      headers['Accept'] = 'application/vnd.github.v3+json';
+
+      try {
+        const manifestRes = await fetch(`https://api.github.com/repos/${repo}/contents/library/library-manifest.json?ref=${branch}`, { headers });
+        if (!manifestRes.ok) return [];
+        const manifestData = await manifestRes.json();
+        const manifestText = atob(manifestData.content);
+        const filenames = JSON.parse(manifestText);
+        
+        if (!Array.isArray(filenames) || filenames.length === 0) return [];
+
+        const songs = [];
+        const batchPromises = filenames.map(async (fname) => {
+          try {
+            const fileRes = await fetch(`https://api.github.com/repos/${repo}/contents/library/${fname}?ref=${branch}`, { headers });
+            if (!fileRes.ok) return null;
+            const fileData = await fileRes.json();
+            if (!fileData) return null;
+            const text = atob(fileData.content);
+            const song = buildSongRecord(fname, text);
+            song.isManual = true;
+            song.cloudFilename = fname;
+            song.groups = ['manual'];
+            if (song.hasChords) song.groups.push('chord');
+            return song;
+          } catch (e) {
+            console.warn('Gagal memuat lagu cloud:', fname, e);
+            return null;
+          }
+        });
+
+        const results = await Promise.all(batchPromises);
+        return results.filter(s => s !== null);
+      } catch (e) {
+        console.warn('Gagal memuat data dari GitHub Cloud:', e);
+        return [];
+      }
+    }
+
+    async function syncCloudSongs() {
+      const repo = getGithubRepo();
+      if (!repo) return;
+
+      const statusEl = document.getElementById('scanStatus');
+      const oldText = statusEl.textContent;
+      statusEl.textContent = 'Menghubungkan ke GitHub Cloud...';
+
+      try {
+        const cloudSongs = await loadCloudSongs();
+        if (cloudSongs.length > 0) {
+          const existingIds = new Set(state.songs.map(s => s.id));
+          cloudSongs.forEach(s => {
+            if (!existingIds.has(s.id)) {
+              state.songs.push(s);
+            } else {
+              const idx = state.songs.findIndex(x => x.id === s.id);
+              if (idx !== -1) state.songs[idx] = s;
+            }
+          });
+          renderSongList();
+          renderTabCounts();
+        }
+        statusEl.textContent = `${state.songs.length} lagu dimuat (Cloud terhubung)`;
+      } catch (e) {
+        console.warn('Gagal menyinkronkan cloud:', e);
+        statusEl.textContent = oldText;
+      }
+    }
+
+    // Settings Modal Controllers
+    const openSettingsBtn = document.getElementById('openSettingsBtn');
+    const settingsModal = document.getElementById('settingsModal');
+    const closeSettingsModal = document.getElementById('closeSettingsModal');
+    const cancelSettings = document.getElementById('cancelSettings');
+    const saveSettings = document.getElementById('saveSettings');
+    const settingsGithubRepo = document.getElementById('settingsGithubRepo');
+    const settingsGithubToken = document.getElementById('settingsGithubToken');
+    const settingsGithubBranch = document.getElementById('settingsGithubBranch');
+
+    if (openSettingsBtn) {
+      openSettingsBtn.addEventListener('click', () => {
+        settingsGithubRepo.value = localStorage.getItem('song_repo_github_repo') || '';
+        settingsGithubToken.value = localStorage.getItem('song_repo_github_token') || '';
+        settingsGithubBranch.value = localStorage.getItem('song_repo_github_branch') || 'main';
+        settingsModal.classList.remove('hidden');
+      });
+    }
+
+    function closeSettings() {
+      settingsModal.classList.add('hidden');
+    }
+
+    closeSettingsModal.addEventListener('click', closeSettings);
+    cancelSettings.addEventListener('click', closeSettings);
+
+    saveSettings.addEventListener('click', async () => {
+      const repo = settingsGithubRepo.value.trim();
+      const token = settingsGithubToken.value.trim();
+      const branch = settingsGithubBranch.value.trim() || 'main';
+
+      if (repo && !/^[^\/]+\/[^\/]+$/.test(repo)) {
+        alert('Format nama repositori salah. Gunakan format "username/nama-repositori".');
+        return;
+      }
+
+      if (repo) {
+        localStorage.setItem('song_repo_github_repo', repo);
+        localStorage.setItem('song_repo_github_branch', branch);
+        if (token) {
+          localStorage.setItem('song_repo_github_token', token);
+        } else {
+          localStorage.removeItem('song_repo_github_token');
+        }
+      } else {
+        localStorage.removeItem('song_repo_github_repo');
+        localStorage.removeItem('song_repo_github_token');
+        localStorage.removeItem('song_repo_github_branch');
+      }
+
+      closeSettings();
+      showToast('Pengaturan disimpan. Memperbarui perpustakaan...');
+      await forceRefreshLibrary();
     });
 
     /* ============================= INIT ============================= */
