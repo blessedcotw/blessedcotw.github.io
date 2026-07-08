@@ -547,6 +547,7 @@
         opacity: 0;
         transform: translateY(8px);
       }
+
       to {
         opacity: 1;
         transform: translateY(0);
@@ -998,6 +999,31 @@
     .dropdown-input-wrapper input:focus {
       border-color: var(--gold);
     }
+
+    /* ===== PASSWORD MODAL ===== */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      15%       { transform: translateX(-7px); }
+      30%       { transform: translateX(7px); }
+      45%       { transform: translateX(-5px); }
+      60%       { transform: translateX(5px); }
+      75%       { transform: translateX(-3px); }
+      90%       { transform: translateX(3px); }
+    }
+    .pwd-shake {
+      animation: shake .45s ease;
+    }
+    #adminPasswordInput {
+      transition: border-color .2s, box-shadow .2s;
+    }
+    #adminPasswordInput.error {
+      border-color: var(--red) !important;
+      box-shadow: 0 0 0 3px rgba(163, 68, 53, .15);
+    }
+    #confirmPasswordBtn:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 
@@ -1076,8 +1102,10 @@
       <div class="cart-list" id="cartList"></div>
 
       <div style="display: flex; gap: 8px; margin-top: 12px; width: 100%;">
-        <button class="btn dashed" id="addBreakBtn" style="flex: 1; font-family: 'Inter'; font-size: 13px; padding: 10px;">+ Tambah Break</button>
-        <button class="btn dashed" id="openManualSongBtn" style="flex: 1; font-family: 'Inter'; font-size: 13px; padding: 10px;">+ Tambah Lagu Baru</button>
+        <button class="btn dashed" id="addBreakBtn"
+          style="flex: 1; font-family: 'Inter'; font-size: 13px; padding: 10px;">+ Tambah Break</button>
+        <button class="btn dashed" id="openManualSongBtn"
+          style="flex: 1; font-family: 'Inter'; font-size: 13px; padding: 10px;">+ Tambah Lagu Baru</button>
       </div>
     </aside>
 
@@ -1085,8 +1113,10 @@
       <h2 class="title">Pratinjau</h2>
       <div class="sub">Tampilan lagu-lagu sesuai urutan di daftar pujian.</div>
       <div class="preview-controls">
-        <label class="chord-toggle"><input type="checkbox" id="chordToggle"> Tampilkan Chord <em>(jika tersedia)</em></label>
-        <label class="chord-toggle"><input type="checkbox" id="notesToggle"> Tampilkan Terjemahan <em>(jika tersedia)</em></label>
+        <label class="chord-toggle"><input type="checkbox" id="chordToggle"> Tampilkan Chord <em>(jika
+            tersedia)</em></label>
+        <label class="chord-toggle"><input type="checkbox" id="notesToggle"> Tampilkan Terjemahan <em>(jika
+            tersedia)</em></label>
         <label class="chord-toggle"><input type="checkbox" id="capsToggle"> Lirik Kapital</label>
       </div>
       <div class="preview-sheet" id="previewSheet"></div>
@@ -1110,8 +1140,10 @@
       </div>
       <div class="efoot" style="display: flex; gap: 8px; justify-content: flex-end; width: 100%;">
         <button class="btn ghost" id="cancelEditor">Batal</button>
-        <button class="btn ghost" id="deleteSongContentBtn" style="color: var(--red); border-color: var(--red); display: none;">🗑️ Hapus</button>
-        <button class="btn ghost" id="editSongContentBtn" style="color: var(--indigo-deep); border-color: var(--indigo-deep);">✏️ Edit Lagu</button>
+        <button class="btn ghost" id="deleteSongContentBtn"
+          style="color: var(--red); border-color: var(--red); display: none;">🗑️ Hapus</button>
+        <button class="btn ghost" id="editSongContentBtn"
+          style="color: var(--indigo-deep); border-color: var(--indigo-deep);">✏️ Edit Lagu</button>
         <button class="btn" id="saveEditor">Tambah ke Daftar Pujian</button>
       </div>
     </div>
@@ -1129,22 +1161,27 @@
       <div class="ebody" style="display: flex; flex-direction: column; gap: 16px; max-height: 60vh; overflow-y: auto;">
         <div class="field" style="margin-bottom: 0;">
           <label for="manualSongTitle" style="font-weight: 600;">Judul</label>
-          <input type="text" id="manualSongTitle" placeholder="Ketik judul lagu..." 
+          <input type="text" id="manualSongTitle" placeholder="Ketik judul lagu..."
             style="width: 100%; padding: 10px; border: 1px solid var(--rule); border-radius: var(--radius); font-family: 'Inter'; font-size: 14px; background: var(--white); outline: none; color: var(--ink);">
         </div>
-        
+
         <div style="display: flex; flex-direction: column; gap: 8px;">
-          <label style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft);">Section & Lirik</label>
+          <label
+            style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft);">Section
+            & Lirik</label>
           <div id="manualSectionsContainer" style="display: flex; flex-direction: column; gap: 14px;">
             <!-- Dynamic sections injected here -->
           </div>
         </div>
 
-        <button class="btn dashed" id="addManualSectionBtn" style="width: 100%; padding: 8px; font-family: 'Inter'; font-size: 13px; margin-top: 4px;">+ Tambah Section</button>
+        <button class="btn dashed" id="addManualSectionBtn"
+          style="width: 100%; padding: 8px; font-family: 'Inter'; font-size: 13px; margin-top: 4px;">+ Tambah
+          Section</button>
       </div>
       <div class="efoot">
         <button class="btn ghost" id="cancelManualSong">Batal</button>
-        <button class="btn" id="saveManualSong" style="background: var(--indigo-deep); color: var(--white);">Simpan Lagu</button>
+        <button class="btn" id="saveManualSong" style="background: var(--indigo-deep); color: var(--white);">Simpan
+          Lagu</button>
       </div>
     </div>
   </div>
@@ -1160,41 +1197,51 @@
       </div>
       <div class="ebody" style="display: flex; flex-direction: column; gap: 16px;">
         <p style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin: 0;">
-          Hubungkan aplikasi ke repositori data GitHub terpisah untuk mencadangkan dan menyinkronkan lagu manual secara otomatis.
+          Hubungkan aplikasi ke repositori data GitHub terpisah untuk mencadangkan dan menyinkronkan lagu manual secara
+          otomatis. Akses dilindungi via Cloudflare Worker — token tidak tersimpan di browser.
         </p>
         <div class="field" style="margin-bottom: 0;">
           <label for="settingsGithubRepo" style="font-weight: 600;">Nama Repositori GitHub</label>
-          <input type="text" id="settingsGithubRepo" placeholder="Contoh: username/nama-repo" 
+          <input type="text" id="settingsGithubRepo" placeholder="Contoh: username/nama-repo"
             style="width: 100%; padding: 8px 10px; border: 1px solid var(--rule); border-radius: var(--radius); font-family: 'Inter'; font-size: 13px; background: var(--white); outline: none; color: var(--ink);">
-        </div>
-        <div class="field" style="margin-bottom: 0;">
-          <label for="settingsGithubToken" style="font-weight: 600;">GitHub Personal Access Token (PAT)</label>
-          <input type="password" id="settingsGithubToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" 
-            style="width: 100%; padding: 8px 10px; border: 1px solid var(--rule); border-radius: var(--radius); font-family: 'Roboto Mono', monospace; font-size: 13px; background: var(--white); outline: none; color: var(--ink);">
         </div>
         <div class="field" style="margin-bottom: 0;">
           <label for="settingsGithubBranch" style="font-weight: 600;">Branch</label>
-          <input type="text" id="settingsGithubBranch" placeholder="main" 
+          <input type="text" id="settingsGithubBranch" placeholder="main"
             style="width: 100%; padding: 8px 10px; border: 1px solid var(--rule); border-radius: var(--radius); font-family: 'Inter'; font-size: 13px; background: var(--white); outline: none; color: var(--ink);">
         </div>
+        <p
+          style="font-size: 11px; color: var(--ink-soft); line-height: 1.5; margin: 0; padding: 8px; background: var(--paper-alt); border-radius: var(--radius); border: 1px solid var(--rule);">
+          🔒 <strong>Aman:</strong> Autentikasi GitHub dikelola oleh Cloudflare Worker. Tidak ada token yang tersimpan
+          atau dikirim dari browser kamu.
+        </p>
       </div>
       <div class="efoot">
         <button class="btn ghost" id="cancelSettings">Batal</button>
-        <button class="btn" id="saveSettings" style="background: var(--indigo-deep); color: var(--white);">Simpan Pengaturan</button>
+        <button class="btn" id="saveSettings" style="background: var(--indigo-deep); color: var(--white);">Simpan
+          Pengaturan</button>
       </div>
     </div>
   </div>
 
   <div class="overlay hidden" id="passwordModal" style="z-index: 2000;">
-    <div class="editor" style="max-width: 320px; width: 90%; text-align: center; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
-      <div style="font-size: 24px; margin-bottom: 8px;">🔒</div>
-      <h3 style="margin-bottom: 6px; font-family: 'Inter'; font-weight: 700; color: var(--ink);">Konfirmasi Admin</h3>
-      <p id="passwordPromptText" style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 16px;">Masukkan kata sandi untuk melanjutkan.</p>
-      <input type="password" id="adminPasswordInput" placeholder="Kata sandi..." 
-        style="width: 100%; padding: 8px 12px; border: 1px solid var(--rule); border-radius: var(--radius); font-family: 'Inter'; font-size: 14px; background: var(--white); outline: none; color: var(--ink); text-align: center; margin-bottom: 16px;">
+    <div id="passwordModalCard" class="editor"
+      style="max-width: 340px; width: 90%; text-align: center; padding: 28px 24px 24px; border-radius: 16px; box-shadow: 0 20px 60px rgba(36,31,24,.18), 0 2px 8px rgba(36,31,24,.08);">
+      <div id="passwordModalIcon" style="font-size: 32px; margin-bottom: 10px; transition: transform .2s;">🔒</div>
+      <h3 style="margin: 0 0 4px; font-family: 'Inter'; font-weight: 700; font-size: 16px; color: var(--ink);">Konfirmasi Admin</h3>
+      <p id="passwordPromptText"
+        style="font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin: 0 0 18px;">Masukkan kata sandi
+        untuk melanjutkan.</p>
+      <div style="position: relative; margin-bottom: 10px;">
+        <input type="password" id="adminPasswordInput" placeholder="Kata sandi..."
+          style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--rule); border-radius: 8px; font-family: 'Inter'; font-size: 14px; background: var(--white); outline: none; color: var(--ink); text-align: center; box-sizing: border-box; transition: border-color .2s;">
+      </div>
+      <div id="passwordError"
+        style="font-size: 12px; color: var(--red); font-weight: 500; min-height: 18px; margin-bottom: 14px; opacity: 0; transition: opacity .2s;"></div>
       <div style="display: flex; gap: 8px; justify-content: center; width: 100%;">
-        <button class="btn ghost" id="cancelPasswordBtn" style="padding: 6px 16px; font-size: 13px;">Batal</button>
-        <button class="btn" id="confirmPasswordBtn" style="background: var(--indigo-deep); color: var(--white); padding: 6px 16px; font-size: 13px;">Konfirmasi</button>
+        <button class="btn ghost" id="cancelPasswordBtn" style="padding: 8px 20px; font-size: 13px;">Batal</button>
+        <button class="btn" id="confirmPasswordBtn"
+          style="background: var(--indigo-deep); color: var(--white); padding: 8px 20px; font-size: 13px; min-width: 100px; transition: opacity .2s;">Konfirmasi</button>
       </div>
     </div>
   </div>
@@ -1387,7 +1434,7 @@
           const age = Date.now() - parsedCache.timestamp;
           if (age < CACHE_DURATION && Array.isArray(parsedCache.songs) && parsedCache.songs.length > 0) {
             state.songs = parsedCache.songs;
-            
+
             // Merge manual songs
             const manualSongs = loadManualSongsFromStorage();
             const existingIds = new Set(state.songs.map(s => s.id));
@@ -1668,29 +1715,15 @@
       const songId = state.editing.songId;
       if (!songId) return;
       closeEditor();
-      checkAdminAuth(() => {
-        openManualSongForEditing(songId);
-      });
+      openManualSongForEditing(songId);
     });
     document.getElementById('deleteSongContentBtn').addEventListener('click', async () => {
       const songId = state.editing.songId;
       if (!songId) return;
-      const pwdConfirm = await promptPassword('Masukkan kata sandi Admin untuk mengonfirmasi penghapusan lagu:');
-      if (pwdConfirm === null) return;
-      const isValid = await verifyPassword(pwdConfirm);
-      if (!isValid) {
-        alert('Kata sandi salah! Aksi hapus dibatalkan.');
-        return;
-      }
-      adminPasswordCache = pwdConfirm;
-      if (!decryptedToken) {
-        decryptedToken = decryptToken(DEFAULT_GITHUB_TOKEN, adminPasswordCache);
-      }
-      sessionStorage.setItem('song_repo_is_admin', 'true');
-      checkAdminAuth(async () => {
-        await deleteManualSong(songId);
-        closeEditor();
-      });
+      closeEditor();
+      const ok = await promptAndVerifyAdmin('Masukkan kata sandi Admin untuk mengonfirmasi penghapusan lagu:');
+      if (!ok) return;
+      await deleteManualSong(songId);
     });
     function closeEditor() {
       document.getElementById('overlay').classList.add('hidden');
@@ -2080,7 +2113,7 @@
     function convertToSongFormat(rawText) {
       const lines = rawText.replace(/\r/g, '').split('\n');
       const processed = [];
-      
+
       function isChordLine(str) {
         const clean = str.trim();
         if (!clean) return false;
@@ -2190,15 +2223,21 @@
       if (!song) return;
 
       const githubRepo = getGithubRepo();
-      const githubToken = getGithubToken();
+      const adminHash = getAdminHash();
 
-      try {
-        if (song.cloudFilename && githubRepo && githubToken) {
-          showToast('Menghapus lagu dari GitHub Cloud...');
+      if (song.cloudFilename && githubRepo && adminHash) {
+        showToast('Menghapus lagu dari GitHub Cloud...');
+        try {
           await deleteSongFromGithub(song.cloudFilename);
+        } catch (e) {
+          if (e.message && e.message.includes('403')) {
+            handleWorkerAuthError();
+            return; // batalkan — jangan hapus lokal jika cloud gagal karena password salah
+          }
+          // Error lain (jaringan, dll) — tetap hapus lokal tapi beri tahu user
+          const lanjut = confirm('Gagal menghapus dari GitHub Cloud: ' + e.message + '\n\nHapus dari perangkat ini saja?');
+          if (!lanjut) return;
         }
-      } catch (e) {
-        console.warn('Gagal menghapus dari GitHub Cloud:', e);
       }
 
       try {
@@ -2238,7 +2277,7 @@
       const row = document.createElement('div');
       row.className = 'manual-section-row';
       row.style.cssText = 'border: 1px solid var(--rule); padding: 12px; border-radius: var(--radius); background: var(--paper); display: flex; flex-direction: column; gap: 8px; position: relative;';
-      
+
       row.innerHTML = `
         <button class="btn-remove-section" style="position: absolute; top: 8px; right: 8px; background: none; border: none; color: var(--red); cursor: pointer; font-size: 14px; padding: 4px;">✕</button>
         <div style="display: flex; flex-direction: column; gap: 4px;">
@@ -2379,9 +2418,9 @@
 
       // If GitHub Cloud is configured, sync it online
       const githubRepo = getGithubRepo();
-      const githubToken = getGithubToken();
-      
-      if (githubRepo && githubToken) {
+      const adminHash = getAdminHash();
+
+      if (githubRepo && adminHash) {
         showToast(isEditing ? 'Memperbarui lagu di GitHub Cloud...' : 'Mengunggah lagu ke GitHub Cloud...');
         saveManualSong.disabled = true;
         saveManualSong.textContent = 'Menyimpan...';
@@ -2392,11 +2431,15 @@
           showToast(isEditing ? 'Lagu berhasil diperbarui di GitHub Cloud.' : 'Lagu berhasil disimpan ke GitHub Cloud.');
         } catch (e) {
           console.error(e);
-          alert('Gagal menyinkronkan ke GitHub Cloud. Lagu disimpan secara lokal saja.');
-          if (isEditing) {
-            updateManualSongInStorage(songRecord);
+          if (e.message && e.message.includes('403')) {
+            handleWorkerAuthError();
           } else {
-            saveManualSongToStorage(songRecord);
+            alert('Gagal menyinkronkan ke GitHub Cloud: ' + e.message + '\n\nLagu disimpan secara lokal saja.');
+            if (isEditing) {
+              updateManualSongInStorage(songRecord);
+            } else {
+              saveManualSongToStorage(songRecord);
+            }
           }
         } finally {
           saveManualSong.disabled = false;
@@ -2446,19 +2489,19 @@
       renderCart();
       renderPreview();
       closeManualModal();
-      if (!githubRepo || !githubToken) {
+      if (!githubRepo || !adminHash) {
         showToast('Lagu manual berhasil ditambahkan secara lokal.');
       }
     });
 
     /* ============================= GITHUB CLOUD SINKRONISASI ============================= */
     const DEFAULT_GITHUB_REPO = 'blessedcotw/SongRepo_userdata';
-    const DEFAULT_GITHUB_TOKEN = 'IDkQITYtCydTRG0HdhMsGQoLAQ4CQXZOLwMcPQ59BBRYb0ZHIwQKKBY4LWd6dgRMCgAuHgsuMz8AB2pydWIiKhd/JzsEfnB4ETs1MAgXB2F9YWRxEwUdJRU7YxJr';
     const DEFAULT_GITHUB_BRANCH = 'main';
-    const ADMIN_PASSWORD_HASH = 'd0754bdf5c1e86be08dafff744e9f481cbba6c48d5549ada18ebd27f28fdc266';
+    const WORKER_BASE_URL = 'https://songrepo-userdata.mm-cotw.workers.dev';
 
-    let decryptedToken = null;
-    let adminPasswordCache = null;
+    // Hash password admin yang di-cache selama sesi (tidak pernah menyimpan password asli)
+    // Verifikasi kebenaran hash dilakukan oleh Cloudflare Worker, bukan di sini
+    let adminHashCache = null;
 
     async function hashPassword(password) {
       const encoder = new TextEncoder();
@@ -2468,105 +2511,133 @@
       return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
-    async function verifyPassword(password) {
-      const hash = await hashPassword(password);
-      return hash === ADMIN_PASSWORD_HASH;
-    }
-
-    function decryptToken(b64, key) {
-      try {
-        const encrypted = atob(b64);
-        let output = '';
-        for (let i = 0; i < encrypted.length; i++) {
-          const charCode = encrypted.charCodeAt(i) ^ key.charCodeAt(i % key.length);
-          output += String.fromCharCode(charCode);
-        }
-        return output;
-      } catch (e) {
-        return null;
-      }
-    }
-
-    function promptPassword(messageText) {
+    /**
+     * Tampilkan modal password, verifikasi ke worker, dan kembalikan true/false.
+     * Modal tetap terbuka selama verifikasi — error tampil inline dengan animasi shake.
+     * User bisa retry tanpa menutup/membuka ulang modal.
+     */
+    function promptAndVerifyAdmin(messageText) {
       return new Promise((resolve) => {
         const modal = document.getElementById('passwordModal');
+        const card  = document.getElementById('passwordModalCard');
         const promptText = document.getElementById('passwordPromptText');
-        const input = document.getElementById('adminPasswordInput');
+        const input  = document.getElementById('adminPasswordInput');
+        const errEl  = document.getElementById('passwordError');
         const confirmBtn = document.getElementById('confirmPasswordBtn');
-        const cancelBtn = document.getElementById('cancelPasswordBtn');
+        const cancelBtn  = document.getElementById('cancelPasswordBtn');
+        const iconEl = document.getElementById('passwordModalIcon');
 
+        // Reset state
         promptText.textContent = messageText;
         input.value = '';
+        input.classList.remove('error');
+        errEl.style.opacity = '0';
+        errEl.textContent = '';
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Konfirmasi';
+        iconEl.textContent = '🔒';
         modal.classList.remove('hidden');
-        input.focus();
+        setTimeout(() => input.focus(), 50);
 
-        function handleConfirm() {
-          const val = input.value;
-          cleanup();
-          resolve(val);
+        function showError(msg) {
+          errEl.textContent = msg;
+          errEl.style.opacity = '1';
+          input.classList.add('error');
+          card.classList.remove('pwd-shake');
+          void card.offsetWidth; // reflow untuk restart animasi
+          card.classList.add('pwd-shake');
+          iconEl.textContent = '❌';
+          input.select();
         }
 
-        function handleCancel() {
-          cleanup();
-          resolve(null);
+        function clearError() {
+          errEl.style.opacity = '0';
+          input.classList.remove('error');
+          iconEl.textContent = '🔒';
         }
 
-        function handleKeydown(e) {
-          if (e.key === 'Enter') {
-            handleConfirm();
-          } else if (e.key === 'Escape') {
-            handleCancel();
-          }
+        function setLoading(loading) {
+          confirmBtn.disabled = loading;
+          confirmBtn.textContent = loading ? 'Memverifikasi...' : 'Konfirmasi';
+          input.disabled = loading;
         }
 
         function cleanup() {
           modal.classList.add('hidden');
+          input.disabled = false;
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Konfirmasi';
           confirmBtn.removeEventListener('click', handleConfirm);
           cancelBtn.removeEventListener('click', handleCancel);
           input.removeEventListener('keydown', handleKeydown);
+          input.removeEventListener('input', clearError);
+        }
+
+        async function handleConfirm() {
+          const pwd = input.value;
+          if (!pwd) {
+            showError('Masukkan kata sandi terlebih dahulu.');
+            return;
+          }
+          setLoading(true);
+          const hash = await hashPassword(pwd);
+          try {
+            const res = await fetch(`${WORKER_BASE_URL}/auth/verify`, {
+              method: 'POST',
+              headers: { 'X-Admin-Hash': hash }
+            });
+            if (res.ok) {
+              adminHashCache = hash;
+              sessionStorage.setItem('song_repo_is_admin', 'true');
+              iconEl.textContent = '✅';
+              cleanup();
+              resolve(true);
+            } else if (res.status === 403) {
+              setLoading(false);
+              showError('Kata sandi salah. Coba lagi.');
+            } else {
+              setLoading(false);
+              showError('Gagal terhubung ke server (status ' + res.status + ').');
+            }
+          } catch (e) {
+            setLoading(false);
+            showError('Tidak dapat terhubung ke server. Periksa koneksi internet.');
+          }
+        }
+
+        function handleCancel() {
+          cleanup();
+          resolve(false);
+        }
+
+        function handleKeydown(e) {
+          if (e.key === 'Enter' && !confirmBtn.disabled) handleConfirm();
+          else if (e.key === 'Escape') handleCancel();
         }
 
         confirmBtn.addEventListener('click', handleConfirm);
         cancelBtn.addEventListener('click', handleCancel);
         input.addEventListener('keydown', handleKeydown);
+        input.addEventListener('input', clearError);
       });
     }
 
     async function checkAdminAuth(callback) {
-      if (sessionStorage.getItem('song_repo_is_admin') === 'true') {
-        if (!decryptedToken && adminPasswordCache) {
-          decryptedToken = decryptToken(DEFAULT_GITHUB_TOKEN, adminPasswordCache);
-        }
+      // Jika hash sudah di-cache di sesi ini, langsung lanjut
+      if (sessionStorage.getItem('song_repo_is_admin') === 'true' && adminHashCache) {
         callback();
         return;
       }
-
-      const password = await promptPassword('Masukkan kata sandi Admin untuk melanjutkan:');
-      if (password === null) return;
-      const isValid = await verifyPassword(password);
-      if (isValid) {
-        adminPasswordCache = password;
-        sessionStorage.setItem('song_repo_is_admin', 'true');
-        decryptedToken = decryptToken(DEFAULT_GITHUB_TOKEN, adminPasswordCache);
-        showToast('Login Admin berhasil.');
-        callback();
-      } else {
-        alert('Kata sandi salah! Akses ditolak.');
-      }
+      const ok = await promptAndVerifyAdmin('Masukkan kata sandi Admin untuk melanjutkan:');
+      if (ok) callback();
     }
 
     function getGithubRepo() {
       return localStorage.getItem('song_repo_github_repo') || DEFAULT_GITHUB_REPO;
     }
-    function getGithubToken() {
-      const localToken = localStorage.getItem('song_repo_github_token');
-      if (localToken) return localToken;
-
-      if (sessionStorage.getItem('song_repo_is_admin') === 'true') {
-        if (!decryptedToken && adminPasswordCache) {
-          decryptedToken = decryptToken(DEFAULT_GITHUB_TOKEN, adminPasswordCache);
-        }
-        return decryptedToken;
+    function getAdminHash() {
+      if (sessionStorage.getItem('song_repo_is_admin') === 'true' && adminHashCache) {
+        return adminHashCache;
       }
       return null;
     }
@@ -2575,16 +2646,19 @@
     }
 
     async function uploadSongToGithub(songRecord, processedText, existingFilename = null) {
-      const token = getGithubToken();
+      const adminHash = getAdminHash();
       const repo = getGithubRepo();
       const branch = getGithubBranch();
-      if (!token || !repo) return null;
+      if (!adminHash || !repo) return null;
 
-      const headers = {
-        'Authorization': `token ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json'
+      // Header untuk worker: X-Admin-Hash membuktikan kamu adalah admin
+      // Token GitHub TIDAK ada di sini — disimpan di Cloudflare Worker
+      const writeHeaders = {
+        'Content-Type': 'application/json',
+        'X-Admin-Hash': adminHash
       };
+      // Header untuk GET request (tidak perlu auth)
+      const readHeaders = { 'Content-Type': 'application/json' };
 
       const filename = existingFilename || `manual_${uid()}_decoded.txt`;
       const songPath = `library/${filename}`;
@@ -2593,7 +2667,7 @@
       let fileSha = null;
       if (existingFilename) {
         try {
-          const fileRes = await fetch(`https://api.github.com/repos/${repo}/contents/${songPath}?ref=${branch}`, { headers });
+          const fileRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/${songPath}?ref=${branch}`, { headers: readHeaders });
           if (fileRes.ok) {
             const fileData = await fileRes.json();
             fileSha = fileData.sha;
@@ -2602,10 +2676,10 @@
           console.warn('Gagal mendapatkan SHA file yang ada:', e);
         }
       }
-      
-      const uploadSongRes = await fetch(`https://api.github.com/repos/${repo}/contents/${songPath}`, {
+
+      const uploadSongRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/${songPath}`, {
         method: 'PUT',
-        headers,
+        headers: writeHeaders,
         body: JSON.stringify({
           message: existingFilename ? `Update manual song: ${songRecord.title}` : `Add manual song: ${songRecord.title}`,
           content: songContentB64,
@@ -2615,6 +2689,9 @@
       });
 
       if (!uploadSongRes.ok) {
+        if (uploadSongRes.status === 403) {
+          throw new Error('Kata sandi admin salah. Akses ditolak oleh server.');
+        }
         throw new Error(`Gagal mengunggah file lagu: ${uploadSongRes.statusText}`);
       }
 
@@ -2622,7 +2699,7 @@
         let manifestSha = null;
         let manifestList = [];
         try {
-          const manifestRes = await fetch(`https://api.github.com/repos/${repo}/contents/library/library-manifest.json?ref=${branch}`, { headers });
+          const manifestRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/library-manifest.json?ref=${branch}`, { headers: readHeaders });
           if (manifestRes.ok) {
             const manifestData = await manifestRes.json();
             manifestSha = manifestData.sha;
@@ -2630,7 +2707,7 @@
             manifestList = JSON.parse(rawText);
           }
         } catch (e) {
-          console.log("Manifest belum ada, akan membuat baru.");
+          console.log('Manifest belum ada, akan membuat baru.');
         }
 
         if (!manifestList.includes(filename)) {
@@ -2638,9 +2715,9 @@
         }
 
         const manifestContentB64 = btoa(JSON.stringify(manifestList, null, 2));
-        const updateManifestRes = await fetch(`https://api.github.com/repos/${repo}/contents/library/library-manifest.json`, {
+        const updateManifestRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/library-manifest.json`, {
           method: 'PUT',
-          headers,
+          headers: writeHeaders,
           body: JSON.stringify({
             message: `Update manifest for: ${songRecord.title}`,
             content: manifestContentB64,
@@ -2650,6 +2727,9 @@
         });
 
         if (!updateManifestRes.ok) {
+          if (updateManifestRes.status === 403) {
+            throw new Error('Kata sandi admin salah. Akses ditolak oleh server.');
+          }
           throw new Error(`Gagal memperbarui manifest: ${updateManifestRes.statusText}`);
         }
       }
@@ -2658,30 +2738,30 @@
     }
 
     async function deleteSongFromGithub(filename) {
-      const token = getGithubToken();
+      const adminHash = getAdminHash();
       const repo = getGithubRepo();
       const branch = getGithubBranch();
-      if (!token || !repo) return;
+      if (!adminHash || !repo) return;
 
-      const headers = {
-        'Authorization': `token ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json'
+      const writeHeaders = {
+        'Content-Type': 'application/json',
+        'X-Admin-Hash': adminHash
       };
+      const readHeaders = { 'Content-Type': 'application/json' };
 
       let fileSha = null;
       try {
-        const fileRes = await fetch(`https://api.github.com/repos/${repo}/contents/library/${filename}?ref=${branch}`, { headers });
+        const fileRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/${filename}?ref=${branch}`, { headers: readHeaders });
         if (fileRes.ok) {
           const fileData = await fileRes.json();
           fileSha = fileData.sha;
         }
-      } catch (e) {}
+      } catch (e) { }
 
       if (fileSha) {
-        await fetch(`https://api.github.com/repos/${repo}/contents/library/${filename}`, {
+        await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/${filename}`, {
           method: 'DELETE',
-          headers,
+          headers: writeHeaders,
           body: JSON.stringify({
             message: `Delete manual song: ${filename}`,
             sha: fileSha,
@@ -2691,16 +2771,16 @@
       }
 
       try {
-        const manifestRes = await fetch(`https://api.github.com/repos/${repo}/contents/library/library-manifest.json?ref=${branch}`, { headers });
+        const manifestRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/library-manifest.json?ref=${branch}`, { headers: readHeaders });
         if (manifestRes.ok) {
           const manifestData = await manifestRes.json();
           const rawText = atob(manifestData.content);
           let manifestList = JSON.parse(rawText);
           manifestList = manifestList.filter(f => f !== filename);
-          
-          await fetch(`https://api.github.com/repos/${repo}/contents/library/library-manifest.json`, {
+
+          await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/library-manifest.json`, {
             method: 'PUT',
-            headers,
+            headers: writeHeaders,
             body: JSON.stringify({
               message: `Remove from manifest: ${filename}`,
               content: btoa(JSON.stringify(manifestList, null, 2)),
@@ -2709,34 +2789,30 @@
             })
           });
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     async function loadCloudSongs() {
-      const token = getGithubToken();
       const repo = getGithubRepo();
       const branch = getGithubBranch();
       if (!repo) return [];
 
-      const headers = {};
-      if (token) {
-        headers['Authorization'] = `token ${token}`;
-      }
-      headers['Accept'] = 'application/vnd.github.v3+json';
+      // GET request ke worker adalah publik — tidak memerlukan autentikasi
+      // Token GitHub dikelola sepenuhnya di sisi Cloudflare Worker
+      const readHeaders = { 'Content-Type': 'application/json' };
 
       try {
-        const manifestRes = await fetch(`https://api.github.com/repos/${repo}/contents/library/library-manifest.json?ref=${branch}`, { headers });
+        const manifestRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/library-manifest.json?ref=${branch}`, { headers: readHeaders });
         if (!manifestRes.ok) return [];
         const manifestData = await manifestRes.json();
         const manifestText = atob(manifestData.content);
         const filenames = JSON.parse(manifestText);
-        
+
         if (!Array.isArray(filenames) || filenames.length === 0) return [];
 
-        const songs = [];
         const batchPromises = filenames.map(async (fname) => {
           try {
-            const fileRes = await fetch(`https://api.github.com/repos/${repo}/contents/library/${fname}?ref=${branch}`, { headers });
+            const fileRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/${fname}?ref=${branch}`, { headers: readHeaders });
             if (!fileRes.ok) return null;
             const fileData = await fileRes.json();
             if (!fileData) return null;
@@ -2798,13 +2874,11 @@
     const cancelSettings = document.getElementById('cancelSettings');
     const saveSettings = document.getElementById('saveSettings');
     const settingsGithubRepo = document.getElementById('settingsGithubRepo');
-    const settingsGithubToken = document.getElementById('settingsGithubToken');
     const settingsGithubBranch = document.getElementById('settingsGithubBranch');
 
     if (openSettingsBtn) {
       openSettingsBtn.addEventListener('click', () => {
         settingsGithubRepo.value = localStorage.getItem('song_repo_github_repo') || '';
-        settingsGithubToken.value = localStorage.getItem('song_repo_github_token') || '';
         settingsGithubBranch.value = localStorage.getItem('song_repo_github_branch') || 'main';
         settingsModal.classList.remove('hidden');
       });
@@ -2819,7 +2893,6 @@
 
     saveSettings.addEventListener('click', async () => {
       const repo = settingsGithubRepo.value.trim();
-      const token = settingsGithubToken.value.trim();
       const branch = settingsGithubBranch.value.trim() || 'main';
 
       if (repo && !/^[^\/]+\/[^\/]+$/.test(repo)) {
@@ -2830,14 +2903,10 @@
       if (repo) {
         localStorage.setItem('song_repo_github_repo', repo);
         localStorage.setItem('song_repo_github_branch', branch);
-        if (token) {
-          localStorage.setItem('song_repo_github_token', token);
-        } else {
-          localStorage.removeItem('song_repo_github_token');
-        }
+        // Hapus token lama dari localStorage jika masih tersimpan dari versi sebelumnya
+        localStorage.removeItem('song_repo_github_token');
       } else {
         localStorage.removeItem('song_repo_github_repo');
-        localStorage.removeItem('song_repo_github_token');
         localStorage.removeItem('song_repo_github_branch');
       }
 
