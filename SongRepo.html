@@ -2212,7 +2212,7 @@
           }
           songNum++;
           ensureSpace(bodySize + 8);
-          const titleText = item.isManual ? `${songNum}. ${item.title.toUpperCase()} *)` : `${songNum}. ${item.title.toUpperCase()}`;
+          const titleText = item.isManual ? `${songNum}. ${item.title.toUpperCase()} ✦` : `${songNum}. ${item.title.toUpperCase()}`;
           printWrapped(titleText, 13, 'times', 'bold', 4);
 
           item.sections.forEach(sec => {
@@ -2256,7 +2256,7 @@
             doc.setFont('times', 'italic');
             doc.setFontSize(9);
             doc.setTextColor(110, 110, 110);
-            doc.text('*) diinput secara manual', margin, pageHeight - 20);
+            doc.text('✦: diinput secara manual', margin, pageHeight - 20);
           }
         }
 
