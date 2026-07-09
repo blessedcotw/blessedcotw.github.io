@@ -87,6 +87,22 @@ export default {
       return errorResponse('Worker configuration error: GITHUB_TOKEN secret not set.', 500);
     }
 
+    // Pengecekan rate limiting binding native jika terkonfigurasi
+    if ((url.pathname === '/auth/verify' && method === 'POST') || 
+        (url.pathname.startsWith('/github/') && ['PUT', 'POST', 'DELETE', 'PATCH'].includes(method))) {
+      if (env.RATE_LIMITER) {
+        const ipAddress = request.headers.get('cf-connecting-ip') || 'unknown';
+        try {
+          const { success } = await env.RATE_LIMITER.limit({ key: ipAddress });
+          if (!success) {
+            return errorResponse('Terlalu banyak permintaan (Rate Limit terlampaui). Silakan coba lagi nanti.', 429);
+          }
+        } catch (e) {
+          console.warn('Gagal memverifikasi rate limit:', e.message);
+        }
+      }
+    }
+
     // Route: POST /auth/verify → cek apakah X-Admin-Hash valid
     if (url.pathname === '/auth/verify' && method === 'POST') {
       const providedHash = request.headers.get('X-Admin-Hash');
