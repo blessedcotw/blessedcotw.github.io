@@ -2096,7 +2096,7 @@
         });
         const hasManualSong = state.cart.some(item => item.isManual);
         if (hasManualSong) {
-          html += `<div class="preview-footer" style="margin-top: 24px; border-top: 1px dashed var(--rule); padding-top: 8px; font-size: 11.5px; color: var(--ink-soft); font-style: italic; text-align: left;">✦: diinput secara manual</div>`;
+          html += `<div class="preview-footer" style="margin-top: 24px; border-top: 1px dashed var(--rule); padding-top: 8px; font-size: 11.5px; color: var(--ink-soft); font-style: italic; text-align: left;">*) diinput secara manual</div>`;
         }
       }
       sheet.innerHTML = html;
@@ -2212,7 +2212,7 @@
           }
           songNum++;
           ensureSpace(bodySize + 8);
-          const titleText = item.isManual ? `${songNum}. ${item.title.toUpperCase()} ✦` : `${songNum}. ${item.title.toUpperCase()}`;
+          const titleText = item.isManual ? `${songNum}. ${item.title.toUpperCase()} *)` : `${songNum}. ${item.title.toUpperCase()}`;
           printWrapped(titleText, 13, 'times', 'bold', 4);
 
           item.sections.forEach(sec => {
@@ -2256,7 +2256,7 @@
             doc.setFont('times', 'italic');
             doc.setFontSize(9);
             doc.setTextColor(110, 110, 110);
-            doc.text('✦: diinput secara manual', margin, pageHeight - 20);
+            doc.text('*) diinput secara manual', margin, pageHeight - 20);
           }
         }
 
