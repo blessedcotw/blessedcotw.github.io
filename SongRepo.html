@@ -671,6 +671,28 @@
       max-width: 620px;
     }
 
+    #exportWordBtn {
+      background-color: #2b579a;
+      border-color: #2b579a;
+    }
+
+    #exportWordBtn:hover {
+      background-color: #1e3d6b;
+      border-color: #1e3d6b;
+      box-shadow: 0 4px 12px rgba(43, 87, 154, 0.2);
+    }
+
+    #exportBtn {
+      background-color: var(--red);
+      border-color: var(--red);
+    }
+
+    #exportBtn:hover {
+      background-color: #8c382b;
+      border-color: #8c382b;
+      box-shadow: 0 4px 12px rgba(163, 68, 53, 0.2);
+    }
+
     /* ---------- Preview pane ---------- */
     .preview-pane h2.title {
       font-family: 'Fraunces', serif;
@@ -727,7 +749,7 @@
       font-family: 'Roboto Mono', monospace;
       font-size: 10px;
       text-transform: uppercase;
-      color: var(--sage);
+      color: #2547a8;
       letter-spacing: .05em;
     }
 
@@ -738,15 +760,15 @@
     }
 
     .preview-break {
-      text-align: center;
+      text-align: left;
       font-family: 'Roboto Mono', monospace;
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: .08em;
-      color: var(--gold);
+      color: #2547a8;
       margin: 20px 0;
-      border-top: 1px dashed var(--rule);
-      border-bottom: 1px dashed var(--rule);
+      border-top: 1px dashed #2547a8;
+      border-bottom: 1px dashed #2547a8;
       padding: 6px 0;
     }
 
@@ -1133,7 +1155,10 @@
         <label class="chord-toggle"><input type="checkbox" id="capsToggle"> Lirik Kapital</label>
       </div>
       <div class="preview-sheet" id="previewSheet"></div>
-      <button class="btn export-btn" id="exportBtn" disabled>Unduh PDF</button>
+      <div style="display: flex; gap: 8px; margin-top: 10px; width: 100%; max-width: 620px;">
+        <button class="btn export-btn" id="exportBtn" style="flex: 1; margin-top: 0;" disabled>Unduh PDF</button>
+        <button class="btn export-btn" id="exportWordBtn" style="flex: 1; margin-top: 0;" disabled>Unduh Word</button>
+      </div>
     </section>
   </div>
 
@@ -1944,13 +1969,17 @@
     function renderCart() {
       const wrap = document.getElementById('cartList');
       const exportBtn = document.getElementById('exportBtn');
+      const exportWordBtn = document.getElementById('exportWordBtn');
 
       if (state.cart.length === 0) {
         wrap.innerHTML = `<div class="cart-empty">Belum ada lagu dipilih.<br>Klik sebuah lagu di sebelah kiri untuk mulai menyusun.</div>`;
         exportBtn.disabled = true;
+        if (exportWordBtn) exportWordBtn.disabled = true;
         return;
       }
-      exportBtn.disabled = !state.cart.some(i => i.type === 'song');
+      const hasSongs = state.cart.some(i => i.type === 'song');
+      exportBtn.disabled = !hasSongs;
+      if (exportWordBtn) exportWordBtn.disabled = !hasSongs;
 
       let songNum = 0;
       wrap.innerHTML = state.cart.map((item, idx) => {
@@ -2087,17 +2116,12 @@
             return;
           }
           songNum++;
-          const titleSuffix = item.isManual ? ' ✦' : '';
-          html += `<div class="preview-song"><h4>${songNum}. ${escapeHtml(item.title.toUpperCase())}${titleSuffix}</h4>`;
+          html += `<div class="preview-song"><h4>${songNum}. ${escapeHtml(item.title.toUpperCase())}</h4>`;
           item.sections.forEach(sec => {
             html += `<div class="preview-sec"><div class="lbl">${escapeHtml(sec.label)}</div><div class="txt">${sectionLinesHtml(sec.lines, state.showChords, state.showNotes, state.showCaps)}</div></div>`;
           });
           html += `</div>`;
         });
-        const hasManualSong = state.cart.some(item => item.isManual);
-        if (hasManualSong) {
-          html += `<div class="preview-footer" style="margin-top: 24px; border-top: 1px dashed var(--rule); padding-top: 8px; font-size: 11.5px; color: var(--ink-soft); font-style: italic; text-align: left;">*) diinput secara manual</div>`;
-        }
       }
       sheet.innerHTML = html;
     }
@@ -2200,26 +2224,33 @@
         state.cart.forEach(item => {
           if (item.type === 'break') {
             ensureSpace(30);
-            doc.setFillColor(220, 220, 220);
-            doc.rect(colX(), y, colWidth, 22, 'F');
-            doc.setFont('times', 'bolditalic');
+            doc.setDrawColor(37, 71, 168);
+            doc.setLineWidth(1);
+            doc.line(colX(), y, colX() + colWidth, y);
+            
+            doc.setFont('times', 'bold');
             doc.setFontSize(11);
+            doc.setTextColor(37, 71, 168);
             const breakText = (item.label || 'Sesi Baru').toUpperCase();
-            doc.text(breakText, colX() + (colWidth / 2), y + 15, { align: 'center' });
-            doc.setTextColor(36, 31, 24);
-            y += 34;
+            doc.text(breakText, colX(), y + 13);
+            doc.setTextColor(0, 0, 0);
+            
+            doc.line(colX(), y + 20, colX() + colWidth, y + 20);
+            y += 30;
             return;
           }
           songNum++;
           ensureSpace(bodySize + 8);
-          const titleText = item.isManual ? `${songNum}. ${item.title.toUpperCase()} *)` : `${songNum}. ${item.title.toUpperCase()}`;
+          const titleText = `${songNum}. ${item.title.toUpperCase()}`;
           printWrapped(titleText, 13, 'times', 'bold', 4);
 
           item.sections.forEach(sec => {
             ensureSpace(bodySize + 4);
             const useMono = state.showChords;
             const lyricFont = useMono ? monoFont : 'times';
+            doc.setTextColor(37, 71, 168);
             printWrapped(sec.label, 10, 'times', 'bolditalic', 2);
+            doc.setTextColor(0, 0, 0);
 
             const secLines = preprocessSectionLines(sec.lines);
             secLines.forEach((l, i) => {
@@ -2248,18 +2279,6 @@
           y += 8;
         });
 
-        const pageCount = doc.internal.getNumberOfPages();
-        const hasManualSong = state.cart.some(item => item.isManual);
-        if (hasManualSong) {
-          for (let p = 1; p <= pageCount; p++) {
-            doc.setPage(p);
-            doc.setFont('times', 'italic');
-            doc.setFontSize(9);
-            doc.setTextColor(110, 110, 110);
-            doc.text('*) diinput secara manual', margin, pageHeight - 20);
-          }
-        }
-
         let pdfName = `Daftar Pujian_${eventName}`;
         if (eventDate) {
           pdfName += `_${eventDate}`;
@@ -2272,6 +2291,156 @@
       } finally {
         exportBtn.disabled = false;
         exportBtn.textContent = originalText;
+      }
+    });
+
+    document.getElementById('exportWordBtn').addEventListener('click', async () => {
+      if (!state.cart.some(i => i.type === 'song')) return;
+
+      const exportWordBtn = document.getElementById('exportWordBtn');
+      const originalText = exportWordBtn.textContent;
+      exportWordBtn.disabled = true;
+      exportWordBtn.textContent = 'Memproses Word...';
+
+      try {
+        const eventName = getEventName();
+        const eventDateVal = document.getElementById('eventDate').value;
+        const eventDate = eventDateVal ? formatDateID(eventDateVal) : '';
+
+        let contentHtml = '';
+
+        let songNum = 0;
+        state.cart.forEach(item => {
+          if (item.type === 'break') {
+            const breakText = (item.label || 'Sesi Baru').toUpperCase();
+            contentHtml += `
+              <div style="margin: 12pt 0 8pt 0; border-top: 1px dashed #2547a8; border-bottom: 1px dashed #2547a8; padding: 5pt 0; text-align: left; page-break-inside: avoid; break-inside: avoid-column;">
+                <span style="font-family: 'Times New Roman', Times, serif; font-size: 10pt; font-weight: bold; color: #2547a8; letter-spacing: 0.05em;">
+                  ${escapeHtml(breakText)}
+                </span>
+              </div>
+            `;
+            return;
+          }
+
+          songNum++;
+          const titleText = `${songNum}. ${item.title.toUpperCase()}`;
+          
+          contentHtml += `<div style="margin-top: 12pt; margin-bottom: 10pt; page-break-inside: avoid; break-inside: avoid-column;">`;
+          contentHtml += `<h3 style="font-family: 'Times New Roman', Times, serif; font-size: 13pt; font-weight: bold; margin: 0 0 6pt 0; text-transform: uppercase;">${escapeHtml(titleText)}</h3>`;
+
+          item.sections.forEach(sec => {
+            contentHtml += `<div style="margin-bottom: 8pt; page-break-inside: avoid; break-inside: avoid-column;">`;
+            contentHtml += `<div style="font-family: 'Times New Roman', Times, serif; font-size: 9.5pt; font-weight: bold; font-style: italic; color: #2547a8; text-transform: uppercase; margin-bottom: 2pt;">${escapeHtml(sec.label)}</div>`;
+
+            const secLines = preprocessSectionLines(sec.lines);
+            secLines.forEach((l, i) => {
+              const hasChord = state.showChords && l.chord;
+              const hasNote = state.showNotes && l.note;
+
+              if (hasChord) {
+                contentHtml += `<div style="font-family: 'Courier New', Courier, monospace; font-size: 10pt; color: #2547a8; white-space: pre; margin: 0; line-height: 1.1;">${escapeHtml(l.chord)}</div>`;
+              }
+
+              const textFontFamily = state.showChords ? "'Courier New', Courier, monospace" : "'Times New Roman', Times, serif";
+              const textFontSize = state.showChords ? "10pt" : "11pt";
+              const lyricText = state.showCaps ? l.text.toUpperCase() : l.text;
+
+              contentHtml += `<div style="font-family: ${textFontFamily}; font-size: ${textFontSize}; color: #241f18; margin: 0; line-height: 1.2;">${escapeHtml(lyricText)}</div>`;
+
+              if (hasNote) {
+                const noteFontFamily = state.showChords ? "'Courier New', Courier, monospace" : "'Times New Roman', Times, serif";
+                const noteFontSize = state.showChords ? "9.5pt" : "10pt";
+                const noteStyle = state.showChords ? "normal" : "italic";
+                contentHtml += `<div style="font-family: ${noteFontFamily}; font-size: ${noteFontSize}; font-style: ${noteStyle}; color: #6e7c5c; margin: 2pt 0 0 0; line-height: 1.2;">${escapeHtml(l.note)}</div>`;
+              }
+            });
+            contentHtml += `</div>`;
+          });
+          contentHtml += `</div>`;
+        });
+
+        // Wrap in full HTML document structure for Word
+        const docHtml = `
+          <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+          <head>
+            <meta charset="utf-8">
+            <title>${escapeHtml(eventName)}</title>
+            <!--[if gte mso 9]>
+            <xml>
+              <w:WordDocument>
+                <w:View>Print</w:View>
+                <w:Zoom>100</w:Zoom>
+                <w:DoNotOptimizeForBrowser/>
+              </w:WordDocument>
+            </xml>
+            <![endif]-->
+            <style>
+              @page HeaderSection {
+                size: 21.0cm 29.7cm;
+                margin: 1.5cm 1.5cm 0.5cm 1.5cm;
+                mso-columns: 1;
+              }
+              div.HeaderSection {
+                page: HeaderSection;
+              }
+              @page Section1 {
+                size: 21.0cm 29.7cm; /* A4 */
+                margin: 1.0cm 1.5cm 1.5cm 1.5cm;
+                mso-header-margin: 36.0pt;
+                mso-footer-margin: 36.0pt;
+                mso-columns: 2;
+                mso-column-space: 18.0pt;
+              }
+              div.Section1 {
+                page: Section1;
+              }
+              body {
+                font-family: 'Times New Roman', Times, serif;
+                font-size: 11pt;
+                line-height: 1.25;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="HeaderSection">
+              <h1 style="text-align: center; font-family: 'Times New Roman', Times, serif; font-size: 18pt; margin-bottom: 2pt;">Daftar Pujian "${escapeHtml(eventName)}"</h1>
+              ${eventDate ? `<h2 style="text-align: center; font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: normal; font-style: italic; margin-top: 0; margin-bottom: 12pt; color: #555555;">${escapeHtml(eventDate)}</h2>` : '<div style="margin-bottom: 12pt;"></div>'}
+            </div>
+            
+            <br clear="all" style="mso-break-type:section-break" />
+            
+            <div class="Section1">
+              ${contentHtml}
+            </div>
+          </body>
+          </html>
+        `;
+
+        const blob = new Blob(['\ufeff' + docHtml], { type: 'application/msword;charset=utf-8' });
+        
+        let wordName = `Daftar Pujian_${eventName}`;
+        if (eventDate) {
+          wordName += `_${eventDate}`;
+        }
+        const safeWordName = wordName.replace(/[\/\\:*?"<>|]/g, '-') + '.doc';
+
+        // Downloader
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = safeWordName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+
+        showToast('File Word berhasil diunduh.');
+      } catch (err) {
+        console.error('Gagal mengekspor Word:', err);
+        showToast('Gagal membuat file Word.');
+      } finally {
+        exportWordBtn.disabled = false;
+        exportWordBtn.textContent = originalText;
       }
     });
 
