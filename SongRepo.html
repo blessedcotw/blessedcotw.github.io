@@ -2209,7 +2209,7 @@
 
         doc.setFont('times', 'bold');
         doc.setFontSize(16);
-        doc.text(`Daftar Pujian "${eventName}"`, pageWidth / 2, y, { align: 'center' });
+        doc.text(`Daftar Pujian ${eventName}`, pageWidth / 2, y, { align: 'center' });
         y += 20;
         if (eventDate) {
           doc.setFont('times', 'normal');
@@ -2404,7 +2404,7 @@
           </head>
           <body>
             <div class="HeaderSection">
-              <h1 style="text-align: center; font-family: 'Times New Roman', Times, serif; font-size: 18pt; margin-bottom: 2pt;">Daftar Pujian "${escapeHtml(eventName)}"</h1>
+              <h1 style="text-align: center; font-family: 'Times New Roman', Times, serif; font-size: 18pt; margin-bottom: 2pt;">Daftar Pujian ${escapeHtml(eventName)}</h1>
               ${eventDate ? `<h2 style="text-align: center; font-family: 'Times New Roman', Times, serif; font-size: 11pt; font-weight: normal; font-style: italic; margin-top: 0; margin-bottom: 12pt; color: #555555;">${escapeHtml(eventDate)}</h2>` : '<div style="margin-bottom: 12pt;"></div>'}
             </div>
             
