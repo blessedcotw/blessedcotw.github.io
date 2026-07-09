@@ -2087,7 +2087,7 @@
             return;
           }
           songNum++;
-          const titleSuffix = item.isManual ? ' *)' : '';
+          const titleSuffix = item.isManual ? ' ✦' : '';
           html += `<div class="preview-song"><h4>${songNum}. ${escapeHtml(item.title.toUpperCase())}${titleSuffix}</h4>`;
           item.sections.forEach(sec => {
             html += `<div class="preview-sec"><div class="lbl">${escapeHtml(sec.label)}</div><div class="txt">${sectionLinesHtml(sec.lines, state.showChords, state.showNotes, state.showCaps)}</div></div>`;
@@ -2096,7 +2096,7 @@
         });
         const hasManualSong = state.cart.some(item => item.isManual);
         if (hasManualSong) {
-          html += `<div class="preview-footer" style="margin-top: 24px; border-top: 1px dashed var(--rule); padding-top: 8px; font-size: 11.5px; color: var(--ink-soft); font-style: italic; text-align: left;">*) diinput secara manual</div>`;
+          html += `<div class="preview-footer" style="margin-top: 24px; border-top: 1px dashed var(--rule); padding-top: 8px; font-size: 11.5px; color: var(--ink-soft); font-style: italic; text-align: left;">✦: diinput secara manual</div>`;
         }
       }
       sheet.innerHTML = html;
