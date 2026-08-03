@@ -559,7 +559,7 @@ textarea:focus {
 }
 
 .phone-orig {
-  font-size: 0.8rem;
+  font-size: 0rem;
   color: var(--text-light);
   text-decoration: line-through;
 }

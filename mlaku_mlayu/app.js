@@ -176,7 +176,6 @@ function renderTable() {
         <td data-label="Nama" class="contact-name">${escapeHTML(c.name)}<span class="card-category-badge">${escapeHTML(c.category || '')}</span></td>
         <td data-label="Nomor HP" class="phone-column">
           <div class="phone-container">
-            <span class="phone-orig">${escapeHTML(c.phone)}</span>
             <span class="phone-conv"><i class="fab fa-whatsapp"></i> ${formattedPhone}</span>
           </div>
         </td>
