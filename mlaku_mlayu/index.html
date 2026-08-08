@@ -1,145 +1,460 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>COTW Mlaku Mlayu - Administrasi Broadcast Pesan</title>
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <!-- FontAwesome for Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COTW Mlaku Mlayu</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/webp" href="assets/images/icon.webp">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-color: #FFDE59;
+            --text-dark: #1E2022;
+            --color-pink: #EF3E5B;
+            --color-pink-hover: #D82C48;
+            --color-orange: #F39C12;
+            --color-orange-hover: #D35400;
+            --color-blue: #1E65B5;
+            --color-blue-hover: #154D8C;
+            --color-green: #00A79D;
+            --color-green-hover: #008C82;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-color);
+            /* Grid background pattern */
+            background-image: 
+                radial-gradient(rgba(0, 0, 0, 0.06) 1.5px, transparent 1.5px),
+                radial-gradient(rgba(0, 0, 0, 0.06) 1.5px, var(--bg-color) 1.5px);
+            background-size: 24px 24px;
+            background-position: 0 0, 12px 12px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 2rem 1rem;
+            color: var(--text-dark);
+        }
+
+        /* Container Card */
+        .container {
+            width: 100%;
+            max-width: 450px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        /* Brand Title Logo (icon.webp) */
+        .brand-logo-img {
+            max-width: 260px;
+            width: 80%;
+            height: auto;
+            margin-bottom: 2rem;
+            filter: drop-shadow(0px 8px 16px rgba(0,0,0,0.1));
+            animation: float 4s ease-in-out infinite;
+        }
+
+        /* Event Details */
+        .event-info {
+            background: rgba(255, 255, 255, 0.95);
+            border: 3px solid var(--text-dark);
+            border-radius: 20px;
+            padding: 1.25rem;
+            width: 100%;
+            box-shadow: 6px 6px 0px var(--text-dark);
+            margin-bottom: 2.2rem;
+            text-align: left;
+        }
+
+        .event-info-title {
+            font-weight: 800;
+            font-size: 1.1rem;
+            margin-bottom: 0.6rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-dark);
+        }
+
+        .event-info-detail {
+            font-size: 0.95rem;
+            color: #333333;
+            margin: 0.4rem 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+        }
+
+        .event-info-detail i {
+            color: var(--color-pink);
+            width: 16px;
+        }
+
+        /* Navigation Buttons */
+        .button-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+            width: 100%;
+            margin-bottom: 2.5rem;
+        }
+
+        .btn-hub {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 1.1rem 1.8rem;
+            font-size: 1.15rem;
+            font-weight: 700;
+            text-decoration: none;
+            color: white;
+            border: 3px solid var(--text-dark);
+            border-radius: 18px;
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
+            text-align: left;
+        }
+
+        /* Custom Colors for Buttons */
+        .btn-rundown {
+            background-color: var(--color-pink);
+            box-shadow: 0 8px 0px var(--text-dark);
+        }
+        .btn-rundown:hover, .btn-rundown:active {
+            background-color: var(--color-pink-hover);
+        }
+
+        .btn-tertib {
+            background-color: var(--color-orange);
+            box-shadow: 0 8px 0px var(--text-dark);
+        }
+        .btn-tertib:hover, .btn-tertib:active {
+            background-color: var(--color-orange-hover);
+        }
+
+        .btn-rute3k {
+            background-color: var(--color-blue);
+            box-shadow: 0 8px 0px var(--text-dark);
+        }
+        .btn-rute3k:hover, .btn-rute3k:active {
+            background-color: var(--color-blue-hover);
+        }
+
+        .btn-rute5k {
+            background-color: var(--color-green);
+            box-shadow: 0 8px 0px var(--text-dark);
+        }
+        .btn-rute5k:hover, .btn-rute5k:active {
+            background-color: var(--color-green-hover);
+        }
+
+        .btn-hub:hover {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0px var(--text-dark);
+        }
+
+        .btn-hub:active {
+            transform: translateY(8px);
+            box-shadow: 0px 0px 0px var(--text-dark);
+        }
+
+        .btn-icon-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-icon-left i {
+            font-size: 1.3rem;
+        }
+
+        .btn-arrow {
+            font-size: 1.1rem;
+            transition: transform 0.2s;
+        }
+
+        .btn-hub:hover .btn-arrow {
+            transform: translateX(4px);
+        }
+
+        /* Footer */
+        footer {
+            margin-top: auto;
+            text-align: center;
+            font-size: 0.85rem;
+            color: rgba(0, 0, 0, 0.6);
+            padding: 1.5rem 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        footer a {
+            color: var(--color-blue);
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .social-icons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 5px;
+        }
+
+        .social-icons a {
+            color: var(--text-dark);
+            font-size: 1.2rem;
+            transition: color 0.2s;
+        }
+
+        .social-icons a:hover {
+            color: var(--color-pink);
+        }
+
+        /* Simplified Full Screen Overlay */
+        .viewer-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .viewer-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        /* Simplified Viewer Body */
+        .viewer-container {
+            position: relative;
+            width: 90%;
+            max-width: 90%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .viewer-title {
+            color: white;
+            font-family: 'Fredoka', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-align: center;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .viewer-img {
+            max-width: 100%;
+            max-height: 70vh;
+            width: auto;
+            height: auto;
+            display: block;
+            border-radius: 16px;
+            border: 4px solid white;
+            box-shadow: 0 20px 45px rgba(0,0,0,0.6);
+        }
+
+        .btn-close-view {
+            background: var(--color-pink);
+            color: white;
+            border: 3px solid var(--text-dark);
+            padding: 0.8rem 2.2rem;
+            font-size: 1rem;
+            font-weight: 800;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 0px rgba(0,0,0,0.3);
+            transition: all 0.1s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 5px;
+        }
+
+        .btn-close-view:hover {
+            background: var(--color-pink-hover);
+            transform: translateY(2px);
+            box-shadow: 0 2px 0px rgba(0,0,0,0.3);
+        }
+
+        .btn-close-view:active {
+            transform: translateY(4px);
+            box-shadow: 0px 0px 0px rgba(0,0,0,0.3);
+        }
+
+        /* Logo Floating Animation */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 480px) {
+            .brand-logo-img {
+                max-width: 220px;
+            }
+            .btn-hub {
+                padding: 1rem 1.4rem;
+                font-size: 1.05rem;
+            }
+            .viewer-title {
+                font-size: 1.25rem;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div class="app-container">
-    <!-- Header -->
-    <header class="main-header">
-      <div class="logo">
-        <div class="logo-text">
-          <h1>COTW Mlaku Mlayu</h1>
-          <p>Administrasi Broadcast Pesan ke Peserta</p>
-        </div>
-      </div>
-    </header>
 
-    <div class="dashboard-grid">
-      <!-- Left Column: Template -->
-      <aside class="sidebar-config">
-        <!-- Template Editor Card -->
-        <section class="card glass" id="template-card">
-          <div class="card-header card-header-toggleable" id="template-card-header">
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <i class="fas fa-envelope-open-text card-icon"></i>
-              <h2>Template Pesan</h2>
+    <div class="container">
+        <!-- Brand Title Logo (icon.webp) -->
+        <img src="assets/images/icon.webp" alt="COTW Mlaku Mlayu" class="brand-logo-img">
+
+        <!-- Event Detail Box -->
+        <div class="event-info">
+            <div class="event-info-title">
+                <i class="fa-solid fa-calendar-check" style="color: var(--color-blue)"></i> Info Pelaksanaan:
             </div>
-            <button class="btn-icon mobile-only" style="width: 32px; height: 32px; border: none; background: transparent;" id="template-toggle-icon">
-              <i class="fas fa-chevron-down"></i>
+            <div class="event-info-detail">
+                <i class="fa-solid fa-calendar-day"></i>
+                <span>Selasa, 25 Agustus 2026</span>
+            </div>
+            <div class="event-info-detail">
+                <i class="fa-solid fa-clock"></i>
+                <span>Pukul 06.00 WIB</span>
+            </div>
+            <div class="event-info-detail">
+                <i class="fa-solid fa-location-dot"></i>
+                <span>GPdI COTW Temanggung</span>
+            </div>
+        </div>
+
+        <!-- Main Button Grid/List -->
+        <div class="button-list">
+            <!-- RUNDOWN -->
+            <button class="btn-hub btn-rundown" onclick="openViewer('Rundown Acara', 'assets/images/rundown.jpg')">
+                <span class="btn-icon-left">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    <span>Rundown Acara</span>
+                </span>
+                <i class="fa-solid fa-chevron-right btn-arrow"></i>
             </button>
-          </div>
-          <div class="card-body" id="template-card-body">
-            <div class="template-placeholders">
-              <span class="badge-placeholder" onclick="insertPlaceholder('{Nama}')">{Nama}</span>
-              <span class="badge-placeholder" onclick="insertPlaceholder('{Nomor}')">{Nomor}</span>
-              <span class="badge-placeholder" onclick="insertPlaceholder('{Kategori}')">{Kategori}</span>
-            </div>
-            <div class="input-group">
-              <label for="message-template">Pesan WhatsApp</label>
-              <textarea id="message-template" rows="12" placeholder="Halo {Nama}, kategori Anda adalah {Kategori} dengan nomor {Nomor}..."></textarea>
-            </div>
-            <div class="template-actions">
-              <button id="btn-save-template" class="btn-primary w-full">
-                <i class="fas fa-save"></i> Simpan Template
-              </button>
-            </div>
-          </div>
-        </section>
-      </aside>
 
-      <!-- Right Column: Stats & Data Table -->
-      <main class="main-content">
-        <!-- Stats Cards -->
-        <div class="stats-container">
-          <div class="stat-card glass">
-            <div class="stat-icon blue"><i class="fas fa-users"></i></div>
-            <div class="stat-info">
-              <span class="stat-label">Total Kontak</span>
-              <span id="stat-total" class="stat-value">0</span>
-            </div>
-          </div>
-          <div class="stat-card glass">
-            <div class="stat-icon yellow"><i class="fas fa-hourglass-half"></i></div>
-            <div class="stat-info">
-              <span class="stat-label">Belum Terkirim</span>
-              <span id="stat-pending" class="stat-value">0</span>
-            </div>
-          </div>
-          <div class="stat-card glass">
-            <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
-            <div class="stat-info">
-              <span class="stat-label">Terkirim</span>
-              <span id="stat-sent" class="stat-value">0</span>
-            </div>
-          </div>
+            <!-- TATA TERTIB -->
+            <button class="btn-hub btn-tertib" onclick="openViewer('Tata Tertib', 'assets/images/rules.jpg')">
+                <span class="btn-icon-left">
+                    <i class="fa-solid fa-clipboard-list"></i>
+                    <span>Tata Tertib</span>
+                </span>
+                <i class="fa-solid fa-chevron-right btn-arrow"></i>
+            </button>
+
+            <!-- RUTE 3K -->
+            <button class="btn-hub btn-rute3k" onclick="openViewer('Rute Mlayu 3K', 'assets/images/rute_3k.jpg')">
+                <span class="btn-icon-left">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                    <span>Rute Mlayu 3K</span>
+                </span>
+                <i class="fa-solid fa-chevron-right btn-arrow"></i>
+            </button>
+
+            <!-- RUTE 5K -->
+            <button class="btn-hub btn-rute5k" onclick="openViewer('Rute Mlayu 5K', 'assets/images/rute_5k.jpg')">
+                <span class="btn-icon-left">
+                    <i class="fa-solid fa-route"></i>
+                    <span>Rute Mlayu 5K</span>
+                </span>
+                <i class="fa-solid fa-chevron-right btn-arrow"></i>
+            </button>
         </div>
 
-        <!-- Progress Section -->
-        <div class="progress-bar-container glass">
-          <div class="progress-label-row">
-            <span>Progress Pengiriman</span>
-            <span id="progress-percentage">0%</span>
-          </div>
-          <div class="progress-track">
-            <div id="progress-bar" class="progress-fill" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <!-- Contacts Table Card -->
-        <section class="card glass table-card">
-          <div class="table-header-row">
-            <h2>Daftar Penerima Pesan</h2>
-            <div class="table-actions">
-              <div class="search-box">
-                <i class="fas fa-search search-icon"></i>
-                <input type="text" id="search-input" placeholder="Cari nama atau nomor...">
-              </div>
-              <button id="btn-fetch-data" class="btn-primary">
-                <i class="fas fa-sync-alt"></i> Tarik Data
-              </button>
-              <button id="btn-reset-status" class="btn-danger-outline" title="Reset semua status menjadi Pending">
-                <i class="fas fa-undo"></i> Reset Status
-              </button>
+        <!-- Footer Contact Info -->
+        <footer>
+            <span>© 2026 GPdI COTW Temanggung</span>
+            <div class="social-icons">
+                <a href="https://youtube.com/@gpdicotwtemanggung" target="_blank"><i class="fa-brands fa-youtube"></i></a>
+                <a href="https://instagram.com/gpdicotw_temanggung" target="_blank"><i class="fa-brands fa-instagram"></i></a>
+                <a href="https://gpdicotwtemanggung.or.id" target="_blank"><i class="fa-solid fa-globe"></i></a>
             </div>
-          </div>
-
-          <div class="table-responsive">
-            <table class="contacts-table">
-              <thead>
-                <tr>
-                  <th width="8%">No</th>
-                  <th width="27%">Nama</th>
-                  <th width="25%">Nomor HP</th>
-                  <th width="20%">Kategori</th>
-                  <th width="10%">Status</th>
-                  <th width="10%">Aksi</th>
-                </tr>
-              </thead>
-              <tbody id="contacts-table-body">
-                <tr>
-                  <td colspan="6" class="table-empty-state">
-                    <i class="fas fa-file-excel empty-icon"></i>
-                    <p>Belum ada data. Silakan klik tombol "Tarik Data" untuk memuat penerima.</p>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </main>
+        </footer>
     </div>
-  </div>
 
-  <script src="app.js"></script>
+    <!-- Simplified Full Screen Image Viewer Modal -->
+    <div id="imageViewer" class="viewer-overlay" onclick="closeViewerOnOverlay(event)">
+        <div class="viewer-container">
+            <h2 id="viewerTitle" class="viewer-title">Rute Mlayu 3K</h2>
+            <img id="viewerImage" class="viewer-img" src="" alt="Viewer Content" />
+            <button class="btn-close-view" onclick="closeViewer()">
+                <i class="fa-solid fa-xmark"></i> Tutup
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const viewer = document.getElementById('imageViewer');
+        const viewerImage = document.getElementById('viewerImage');
+        const viewerTitle = document.getElementById('viewerTitle');
+
+        function openViewer(title, imgSrc) {
+            viewerTitle.textContent = title;
+            viewerImage.src = imgSrc;
+            viewer.classList.add('active');
+            document.body.style.overflow = 'hidden'; // prevent background scroll
+        }
+
+        function closeViewer() {
+            viewer.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // Close when clicking background overlay itself (not image or text)
+        function closeViewerOnOverlay(e) {
+            if (e.target === viewer) {
+                closeViewer();
+            }
+        }
+
+        // Close on ESC key press
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && viewer.classList.contains('active')) {
+                closeViewer();
+            }
+        });
+    </script>
 </body>
 </html>
