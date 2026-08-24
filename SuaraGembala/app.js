@@ -81,13 +81,23 @@ const LOREM_REFLECTIONS = [
 // Pick random fallback index once per session
 const randomFallbackIdx = Math.floor(Math.random() * LOREM_VERSES.length);
 
-// Check if form inputs are completed
+// Check if form inputs are completed (Only Verse Text & Verse Ref required, Reflection is optional)
 function checkFormCompletion() {
-  // Download button is ALWAYS enabled so users can download immediately (using default fallback texts if inputs are empty)
+  const isVerseFilled = state.verseText.trim().length > 0;
+  const isRefFilled = state.verseRef.trim().length > 0;
+  
+  // Download is enabled ONLY if both Verse Text AND Verse Reference are filled (reflection is optional)
+  const isComplete = isVerseFilled && isRefFilled;
+
   if (downloadBtn) {
-    downloadBtn.disabled = false;
-    downloadBtn.classList.remove('disabled');
-    downloadBtn.title = "Download PNG High Quality";
+    downloadBtn.disabled = !isComplete;
+    if (!isComplete) {
+      downloadBtn.classList.add('disabled');
+      downloadBtn.title = "Lengkapi Isi Teks Ayat dan Nomor Ayat untuk mendownload PNG";
+    } else {
+      downloadBtn.classList.remove('disabled');
+      downloadBtn.title = "Download PNG High Quality";
+    }
   }
 }
 
@@ -578,6 +588,13 @@ function showIOSImageSheet(dataUrl) {
 // Download High-Res PNG Handler
 async function handleDownload() {
   try {
+    const isVerseFilled = state.verseText.trim().length > 0;
+    const isRefFilled = state.verseRef.trim().length > 0;
+    if (!isVerseFilled || !isRefFilled) {
+      alert('Lengkapi Isi Teks Ayat dan Nomor Ayat terlebih dahulu untuk mendownload PNG.');
+      return;
+    }
+
     // Redraw canvas with clean opacity
     drawCanvas();
 
