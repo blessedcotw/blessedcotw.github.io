@@ -30,7 +30,9 @@ const state = {
 };
 
 // Elements
-const flatpickrDateInput = document.getElementById('flatpickrDate');
+const dateDisplayText = document.getElementById('dateDisplayText');
+const nativeDateInput = document.getElementById('nativeDateInput');
+const triggerNativeDateBtn = document.getElementById('triggerNativeDateBtn');
 const verseInput = document.getElementById('verseInput');
 const refInput = document.getElementById('refInput');
 const reflectionInput = document.getElementById('reflectionInput');
@@ -57,11 +59,7 @@ const nextMonthBtn = document.getElementById('nextMonthBtn');
 const calendarMonthYear = document.getElementById('calendarMonthYear');
 const calendarDaysGrid = document.getElementById('calendarDaysGrid');
 
-// Calendar State
-let currentDateState = new Date();
-let selectedDateState = new Date();
-
-/// Sample Bible Verse Fallbacks when inputs are empty
+// Sample Bible Verse Fallbacks when ALL inputs are left empty on page load
 const LOREM_VERSES = [
   "Sesungguhnya, akan datang waktunya, demikianlah firman TUHAN, Aku akan mengadakan perjanjian baru dengan kaum Israel dan kaum Yehuda, bukan seperti perjanjian yang telah Kuadakan dengan nenek moyang mereka.",
   "TUHAN adalah gembalaku, takkan kekurangan aku. Ia membaringkan aku di padang yang berumput hijau, Ia membimbing aku ke air yang tenang; Ia menyegarkan jiwaku.",
@@ -83,23 +81,13 @@ const LOREM_REFLECTIONS = [
 // Pick random fallback index once per session
 const randomFallbackIdx = Math.floor(Math.random() * LOREM_VERSES.length);
 
-// Check if form inputs are completed (Only Verse Text & Verse Ref required, Reflection can be empty)
+// Check if form inputs are completed
 function checkFormCompletion() {
-  const isVerseFilled = state.verseText.trim().length > 0;
-  const isRefFilled = state.verseRef.trim().length > 0;
-  
-  // Download is enabled as long as Verse & Verse Number/Ref are filled (reflection is optional)
-  const isComplete = isVerseFilled && isRefFilled;
-
+  // Download button is ALWAYS enabled so users can download immediately (using default fallback texts if inputs are empty)
   if (downloadBtn) {
-    downloadBtn.disabled = !isComplete;
-    if (!isComplete) {
-      downloadBtn.classList.add('disabled');
-      downloadBtn.title = "Lengkapi Isi Teks Ayat dan Nomor Ayat untuk mendownload PNG";
-    } else {
-      downloadBtn.classList.remove('disabled');
-      downloadBtn.title = "Download PNG High Quality";
-    }
+    downloadBtn.disabled = false;
+    downloadBtn.classList.remove('disabled');
+    downloadBtn.title = "Download PNG High Quality";
   }
 }
 
@@ -272,17 +260,33 @@ async function loadRandomNatureImages(customKeyword = '') {
       return;
     }
 
-    // Process photo objects from Pexels API payload: photo.src.portrait or photo.src.large2x
-    const imagePromises = photos.map((photo, i) => {
+    // Process photo objects from Pexels API payload: convert to local Blob URLs to prevent Canvas Tainting
+    const imagePromises = photos.map(async (photo, i) => {
       const imgUrl = photo.src ? (photo.src.portrait || photo.src.large2x || photo.src.large) : '';
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
+      if (!imgUrl) return { img: null, url: '', index: i };
 
-      return new Promise((resolve) => {
-        img.onload = () => resolve({ img, url: imgUrl, index: i, photographer: photo.photographer });
-        img.onerror = () => resolve({ img: null, url: imgUrl, index: i });
-        img.src = imgUrl;
-      });
+      try {
+        const response = await fetch(imgUrl);
+        if (!response.ok) throw new Error('Fetch image failed');
+        const blob = await response.blob();
+        const blobObjectUrl = URL.createObjectURL(blob);
+
+        const img = new Image();
+        return new Promise((resolve) => {
+          img.onload = () => resolve({ img, url: blobObjectUrl, index: i, photographer: photo.photographer });
+          img.onerror = () => resolve({ img: null, url: imgUrl, index: i });
+          img.src = blobObjectUrl;
+        });
+      } catch (err) {
+        // Direct Image fallback if fetch is blocked
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        return new Promise((resolve) => {
+          img.onload = () => resolve({ img, url: imgUrl, index: i, photographer: photo.photographer });
+          img.onerror = () => resolve({ img: null, url: imgUrl, index: i });
+          img.src = imgUrl;
+        });
+      }
     });
 
     const results = await Promise.all(imagePromises);
@@ -347,7 +351,7 @@ function getWrappedLines(ctx, text, maxWidth) {
 }
 
 // Main Draw Canvas Function
-function drawCanvas() {
+function drawCanvas(ignoreBg = false) {
   const width = canvas.width;   // 1080
   const height = canvas.height; // 1920
   const paddingX = 90;
@@ -357,9 +361,9 @@ function drawCanvas() {
   ctx.fillStyle = '#000000';
   ctx.fillRect(0, 0, width, height);
 
-  // 2. Draw Nature Image Background with User Opacity
+  // 2. Draw Nature Image Background with User Opacity (if not ignored)
   const activeBg = state.bgImages[state.selectedBgIndex];
-  if (activeBg && activeBg.img) {
+  if (!ignoreBg && activeBg && activeBg.img) {
     ctx.save();
     ctx.globalAlpha = parseFloat(state.bgOpacity);
 
@@ -419,10 +423,18 @@ function drawCanvas() {
   ctx.fillText(state.dateStr || '', width / 2, currentY);
   currentY += 100;
 
-  // Fallback values if input boxes are left empty
-  const activeVerseText = state.verseText.trim() || LOREM_VERSES[randomFallbackIdx];
-  const activeVerseRef = state.verseRef.trim() || LOREM_REFS[randomFallbackIdx];
-  const activeReflectionText = state.reflectionText.trim() || LOREM_REFLECTIONS[randomFallbackIdx];
+  // Read actual user input values
+  const userVerse = state.verseText.trim();
+  const userRef = state.verseRef.trim();
+  const userReflection = state.reflectionText.trim();
+
+  // If ALL fields are empty (e.g. initial page load), use sample placeholder texts
+  const isAllEmpty = !userVerse && !userRef && !userReflection;
+
+  const activeVerseText = userVerse || (isAllEmpty ? LOREM_VERSES[randomFallbackIdx] : '');
+  const activeVerseRef = userRef || (isAllEmpty ? LOREM_REFS[randomFallbackIdx] : '');
+  // If user enters verse/ref but leaves reflection empty, activeReflectionText remains EMPTY ('')
+  const activeReflectionText = userReflection || (isAllEmpty ? LOREM_REFLECTIONS[randomFallbackIdx] : '');
 
   // 4. Calculate Remaining Space for Verse, Ref, Divider, Reflection
   const remainingHeight = height - currentY - 140; // Leave margin at bottom
@@ -438,21 +450,21 @@ function drawCanvas() {
   let totalCalculatedH = 0;
 
   for (let attempt = 0; attempt < 10; attempt++) {
-    ctx.font = `500 ${verseFontSize}px "Montserrat", sans-serif`;
-    verseLines = getWrappedLines(ctx, activeVerseText, contentWidth);
     const verseLineHeight = verseFontSize * 1.5;
+    ctx.font = `500 ${verseFontSize}px "Montserrat", sans-serif`;
+    verseLines = activeVerseText ? getWrappedLines(ctx, activeVerseText, contentWidth) : [];
     const verseBlockH = verseLines.length * verseLineHeight;
 
-    const refBlockH = refFontSize * 1.6;
+    const refBlockH = activeVerseRef ? (refFontSize * 1.6) : 0;
 
-    const dividerH = 50;
+    const dividerH = (activeReflectionText && (activeVerseText || activeVerseRef)) ? 50 : 0;
 
-    ctx.font = `400 ${reflectionFontSize}px "Playfair Display", serif`;
-    reflectionLines = getWrappedLines(ctx, activeReflectionText, contentWidth);
     const reflectionLineHeight = reflectionFontSize * 1.5;
+    ctx.font = `400 ${reflectionFontSize}px "Playfair Display", serif`;
+    reflectionLines = activeReflectionText ? getWrappedLines(ctx, activeReflectionText, contentWidth) : [];
     const reflectionBlockH = reflectionLines.length * reflectionLineHeight;
 
-    totalCalculatedH = verseBlockH + refBlockH + dividerH + reflectionBlockH + 120; // Spacings
+    totalCalculatedH = verseBlockH + refBlockH + dividerH + reflectionBlockH + 60; // Spacings
 
     if (totalCalculatedH > remainingHeight && verseFontSize > 28) {
       verseFontSize -= 2;
@@ -464,54 +476,168 @@ function drawCanvas() {
   }
 
   // --- Render Verse Text (Montserrat Medium) ---
-  ctx.fillStyle = '#ffffff';
-  ctx.font = `500 ${verseFontSize}px "Montserrat", sans-serif`;
-  const verseLineH = verseFontSize * 1.55;
+  if (verseLines.length > 0) {
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `500 ${verseFontSize}px "Montserrat", sans-serif`;
+    const verseLineH = verseFontSize * 1.55;
 
-  verseLines.forEach((line) => {
-    ctx.fillText(line, width / 2, currentY);
-    currentY += verseLineH;
-  });
-  currentY += 35;
+    verseLines.forEach((line) => {
+      ctx.fillText(line, width / 2, currentY);
+      currentY += verseLineH;
+    });
+    currentY += 35;
+  }
 
   // --- Render Verse Reference / Number (Playfair Display SC Gold) ---
-  ctx.fillStyle = '#F59E0B';
-  ctx.font = `700 ${refFontSize}px "Playfair Display", serif`;
-  ctx.fillText(activeVerseRef, width / 2, currentY);
-  currentY += refFontSize * 0.8 + 40;
+  if (activeVerseRef) {
+    ctx.fillStyle = '#F59E0B';
+    ctx.font = `700 ${refFontSize}px "Playfair Display", serif`;
+    ctx.fillText(activeVerseRef, width / 2, currentY);
+    currentY += refFontSize * 0.8 + 40;
+  }
 
-  // --- Render Divider Image ---
+  // --- Render Divider Image (Only if Reflection exists) ---
   const divider = state.loadedImages['divider'];
-  if (divider) {
+  if (activeReflectionText && divider) {
     const dividerW = 540;
     const dividerH = (divider.height / divider.width) * dividerW;
     ctx.drawImage(divider, (width - dividerW) / 2, currentY, dividerW, dividerH);
     currentY += dividerH + 50;
-  } else {
-    currentY += 40;
   }
 
   // --- Render Reflection Text (Playfair Display Regular) ---
-  ctx.fillStyle = '#ffffff';
-  ctx.font = `400 ${reflectionFontSize}px "Playfair Display", serif`;
-  const reflectionLineH = reflectionFontSize * 1.55;
+  if (reflectionLines.length > 0) {
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `400 ${reflectionFontSize}px "Playfair Display", serif`;
+    const reflectionLineH = reflectionFontSize * 1.55;
 
-  reflectionLines.forEach((line) => {
-    ctx.fillText(line, width / 2, currentY);
-    currentY += reflectionLineH;
-  });
+    reflectionLines.forEach((line) => {
+      ctx.fillText(line, width / 2, currentY);
+      currentY += reflectionLineH;
+    });
+  }
+}
+
+// Helper: Convert Data URL to File object synchronously to preserve user activation gesture in Safari iOS
+function dataURLtoFile(dataurl, filename) {
+  const arr = dataurl.split(',');
+  const mime = (arr[0].match(/:(.*?);/) || [])[1] || 'image/png';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+}
+
+// Display clean iOS Image Sheet Modal (used when Web Share is unavailable e.g. on HTTP 192.168.x.x LAN or unsupported iOS browsers)
+function showIOSImageSheet(dataUrl) {
+  let modal = document.getElementById('iosImageSheet');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'iosImageSheet';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal-content ios-sheet-content">
+        <div class="modal-header">
+          <h3><i class="fa-solid fa-download"></i> Simpan Gambar PNG</h3>
+          <button id="closeIosSheetBtn" class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body ios-sheet-body">
+          <p class="ios-instruction">
+            <i class="fa-solid fa-hand-pointer"></i> <strong>Tekan & Tahan Gambar</strong> di bawah ini, lalu pilih <strong>"Simpan ke Foto"</strong> / <strong>"Save Image"</strong>.
+          </p>
+          <div class="ios-img-box">
+            <img id="iosResultImg" src="" alt="Suara Gembala PNG">
+          </div>
+          <button id="closeIosSheetBtn2" class="btn btn-primary" style="width:100%;margin-top:14px;justify-content:center;">
+            Selesai
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    const closeBtn = modal.querySelector('#closeIosSheetBtn');
+    const closeBtn2 = modal.querySelector('#closeIosSheetBtn2');
+    const hideModal = () => modal.classList.add('hidden');
+
+    if (closeBtn) closeBtn.addEventListener('click', hideModal);
+    if (closeBtn2) closeBtn2.addEventListener('click', hideModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) hideModal();
+    });
+  }
+
+  const imgElem = modal.querySelector('#iosResultImg');
+  if (imgElem) imgElem.src = dataUrl;
+  modal.classList.remove('hidden');
 }
 
 // Download High-Res PNG Handler
-function handleDownload() {
-  // Redraw canvas with opacity applied cleanly
-  drawCanvas();
+async function handleDownload() {
+  try {
+    // Redraw canvas with clean opacity
+    drawCanvas();
 
-  const link = document.createElement('a');
-  const dateFormatted = dateInput.value || 'ayat-harian';
-  link.download = `Suara_Gembala_${dateFormatted}.png`;
-  link.href = canvas.toDataURL('image/png', 1.0);
-  link.click();
+    const dateVal = (nativeDateInput && nativeDateInput.value) ? nativeDateInput.value : 'ayat-harian';
+    const filename = `Suara_Gembala_${dateVal}.png`;
+
+    let dataUrl;
+    try {
+      dataUrl = canvas.toDataURL('image/png', 1.0);
+    } catch (taintErr) {
+      console.warn('Canvas export error (tainted image), redrawing without background image...', taintErr);
+      drawCanvas(true); // Redraw without background image to guarantee valid export
+      dataUrl = canvas.toDataURL('image/png', 1.0);
+    }
+
+    const file = dataURLtoFile(dataUrl, filename);
+
+    // Detect iOS (iPhone / iPad / iPod / Mac Touch)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    // 1. Web Share API (Primary for iOS Safari on HTTPS/localhost & mobile browsers)
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: 'Suara Gembala',
+          text: 'Suara Gembala - GPdI COTW Temanggung'
+        });
+        return; // Success share sheet triggered
+      } catch (err) {
+        if (err.name === 'AbortError') return; // User cancelled share dialog
+        console.warn('Web Share API failed, using iOS sheet fallback:', err);
+      }
+    }
+
+    // 2. iOS Safari Fallback (For HTTP LAN e.g. 192.168.x.x or unsupported iOS contexts)
+    if (isIOS) {
+      showIOSImageSheet(dataUrl);
+      return;
+    }
+
+    // 3. Desktop (Firefox, Chrome, Edge, Safari Desktop) & Android direct download
+    const blob = new Blob([file], { type: 'image/png' });
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = blobUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(() => {
+      URL.revokeObjectURL(blobUrl);
+    }, 3000);
+
+  } catch (err) {
+    console.error('Download error:', err);
+    alert('Terjadi kesalahan saat mengunduh gambar: ' + err.message);
+  }
 }
 
 // Event Listeners Initialization
@@ -561,6 +687,8 @@ function setupEventListeners() {
     }
   });
 
+
+
   // Handle Search Form Submission
   searchForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -572,18 +700,21 @@ function setupEventListeners() {
   });
 
   // Native Datepicker Synchronizer
-  nativeDateInput.addEventListener('change', (e) => {
-    if (e.target.value) {
-      const selectedDate = new Date(e.target.value + 'T00:00:00');
-      const naturalStr = formatDateIndonesian(selectedDate);
-      dateDisplayText.value = naturalStr;
-      state.dateStr = naturalStr;
-      drawCanvas();
-    }
-  });
+  if (nativeDateInput) {
+    nativeDateInput.addEventListener('change', (e) => {
+      if (e.target.value) {
+        const selectedDate = new Date(e.target.value + 'T00:00:00');
+        const naturalStr = formatDateIndonesian(selectedDate);
+        if (dateDisplayText) dateDisplayText.value = naturalStr;
+        state.dateStr = naturalStr;
+        drawCanvas();
+      }
+    });
+  }
 
   // Trigger native browser datepicker dialog
   const openCalendar = () => {
+    if (!nativeDateInput) return;
     if (typeof nativeDateInput.showPicker === 'function') {
       nativeDateInput.showPicker();
     } else {
@@ -591,10 +722,10 @@ function setupEventListeners() {
     }
   };
 
-  dateDisplayText.addEventListener('click', openCalendar);
-  triggerNativeDateBtn.addEventListener('click', openCalendar);
+  if (dateDisplayText) dateDisplayText.addEventListener('click', openCalendar);
+  if (triggerNativeDateBtn) triggerNativeDateBtn.addEventListener('click', openCalendar);
 
-  downloadBtn.addEventListener('click', handleDownload);
+  if (downloadBtn) downloadBtn.addEventListener('click', handleDownload);
 }
 
 // App Initialization

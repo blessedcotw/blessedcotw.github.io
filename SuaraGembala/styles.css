@@ -536,3 +536,51 @@ canvas {
   border-color: var(--accent-gold);
   font-weight: bold;
 }
+
+/* iOS Image Sheet Modal */
+.ios-sheet-content {
+  max-width: 480px !important;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.ios-sheet-body {
+  overflow-y: auto;
+  text-align: center;
+}
+
+.ios-instruction {
+  font-size: 0.9rem;
+  color: #cbd5e1;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  text-align: left;
+  line-height: 1.45;
+}
+
+.ios-instruction i {
+  color: var(--accent-gold);
+  margin-right: 6px;
+}
+
+.ios-img-box {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: #000;
+  margin-bottom: 8px;
+}
+
+.ios-img-box img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  -webkit-touch-callout: default !important; /* Enable iOS Long-press Save Image menu */
+  user-select: auto !important;
+}
