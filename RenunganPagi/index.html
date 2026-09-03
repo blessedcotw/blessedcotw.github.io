@@ -336,9 +336,7 @@
 
           return { id: videoId, title, published, dateKey: dateKey(published) };
         })
-          // 1. Saring HANYA video yang mengandung frasa 'renungan pagi' (Mengabaikan Live Streaming / Ibadah / Shorts / Video Lain)
-          .filter(v => v.id && v.title.toLowerCase().includes('renungan pagi'))
-          // 2. Urutkan dari publikasi terbaru ke terlama
+          .filter(v => v.id && v.id.length === 11)
           .sort((a, b) => b.published - a.published);
 
         setStatus('Termuat ' + videos.length + ' video Renungan Pagi terbaru.');
