@@ -2177,19 +2177,40 @@ async function loadCloudSongs() {
 
     if (!Array.isArray(filenames) || filenames.length === 0) return [];
 
-    const results = [];
-    const batchSize = 10;
+    // Baca cache cloud dari IndexedDB
+    let cloudCache = await getCache('cloud_files_cache') || { timestamp: 0, files: {} };
+    if (!cloudCache.files) cloudCache.files = {};
 
-    for (let i = 0; i < filenames.length; i += batchSize) {
-      const batch = filenames.slice(i, i + batchSize);
-      const batchPromises = batch.map(async (fname) => {
+    const results = [];
+    const missingFilenames = [];
+
+    // 1. Cek file mana yang sudah ada di IndexedDB lokal & bersihkan file yang sudah dihapus di cloud
+    Object.keys(cloudCache.files).forEach(fn => {
+      if (!filenames.includes(fn)) {
+        delete cloudCache.files[fn];
+      }
+    });
+
+    for (const fname of filenames) {
+      if (cloudCache.files[fname]) {
+        const song = buildSongRecord(fname, cloudCache.files[fname]);
+        song.cloudFilename = fname;
+        results.push(song);
+      } else {
+        missingFilenames.push(fname);
+      }
+    }
+
+    // 2. Jika ada file baru yang belum ada di IndexedDB, unduh secara paralel via Worker
+    if (missingFilenames.length > 0) {
+      const batchPromises = missingFilenames.map(async (fname) => {
         try {
           const fileRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/${fname}?ref=${branch}`, { headers: readHeaders });
           if (!fileRes.ok) throw new Error(`Status: ${fileRes.status}`);
           const fileData = await fileRes.json();
-          // Decode base64 content safely, preserving UTF-8 strings
           const text = decodeURIComponent(escape(atob(fileData.content.replace(/\s/g, ''))));
           
+          cloudCache.files[fname] = text;
           const song = buildSongRecord(fname, text);
           song.cloudFilename = fname;
           return song;
@@ -2199,16 +2220,19 @@ async function loadCloudSongs() {
         }
       });
 
-      const batchResults = await Promise.all(batchPromises);
-      for (const song of batchResults) {
+      const fetchedSongs = await Promise.all(batchPromises);
+      for (const song of fetchedSongs) {
         if (song) results.push(song);
       }
+
+      // Simpan pembaruan cache cloud ke IndexedDB
+      cloudCache.timestamp = Date.now();
+      await setCache('cloud_files_cache', cloudCache);
     }
 
     return results;
   } catch (e) {
     console.warn('Gagal memuat data dari GitHub Cloud via Worker:', e);
-    alert('Gagal memuat lagu dari GitHub Cloud via Worker: ' + e.message);
     return [];
   }
 }
