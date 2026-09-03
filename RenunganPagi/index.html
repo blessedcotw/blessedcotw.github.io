@@ -727,14 +727,131 @@
       }
     });
 
-    document.getElementById('downloadBtn').addEventListener('click', () => {
-      if (!currentVideo) return;
-      const canvas = document.getElementById('storyCanvas');
-      const link = document.createElement('a');
-      link.download = 'Renungan_Pagi_' + (datePick.value || 'story') + '.png';
-      link.href = canvas.toDataURL('image/png', 1.0);
-      link.click();
-    });
+    // Helper: Convert Data URL to File object synchronously to preserve user activation gesture in Safari iOS
+    function dataURLtoFile(dataurl, filename) {
+      const arr = dataurl.split(',');
+      const mime = (arr[0].match(/:(.*?);/) || [])[1] || 'image/png';
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new File([u8arr], filename, { type: mime });
+    }
+
+    // Display clean iOS Image Sheet Modal (used when Web Share is unavailable e.g. on HTTP 192.168.x.x LAN or unsupported iOS browsers)
+    function showIOSImageSheet(dataUrl) {
+      let modal = document.getElementById('iosImageSheet');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'iosImageSheet';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+          <div class="modal-content ios-sheet-content">
+            <div class="modal-header">
+              <h3><i class="fa-solid fa-download"></i> Simpan Gambar PNG</h3>
+              <button id="closeIosSheetBtn" class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body ios-sheet-body">
+              <p class="ios-instruction">
+                <i class="fa-solid fa-hand-pointer"></i> <strong>Tekan & Tahan Gambar</strong> di bawah ini, lalu pilih <strong>"Simpan ke Foto"</strong> / <strong>"Save Image"</strong>.
+              </p>
+              <div class="ios-img-box">
+                <img id="iosResultImg" src="" alt="Renungan Pagi PNG">
+              </div>
+              <button id="closeIosSheetBtn2" class="btn btn-primary" style="width:100%;margin-top:14px;justify-content:center;">
+                Selesai
+              </button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+
+        const closeBtn = modal.querySelector('#closeIosSheetBtn');
+        const closeBtn2 = modal.querySelector('#closeIosSheetBtn2');
+        const hideModal = () => modal.classList.add('hidden');
+
+        if (closeBtn) closeBtn.addEventListener('click', hideModal);
+        if (closeBtn2) closeBtn2.addEventListener('click', hideModal);
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) hideModal();
+        });
+      }
+
+      const imgElem = modal.querySelector('#iosResultImg');
+      if (imgElem) imgElem.src = dataUrl;
+      modal.classList.remove('hidden');
+    }
+
+    // Advanced High-Res PNG Download Handler (SuaraGembala Style)
+    async function handleDownload() {
+      try {
+        if (!currentVideo) return;
+
+        await drawCanvas(currentVideo);
+
+        const dateVal = (datePick && datePick.value) ? datePick.value : 'renungan-pagi';
+        const filename = `Renungan_Pagi_${dateVal}.png`;
+
+        const canvas = document.getElementById('storyCanvas');
+        let dataUrl;
+        try {
+          dataUrl = canvas.toDataURL('image/png', 1.0);
+        } catch (taintErr) {
+          console.warn('Canvas export error (tainted image), redrawing without background image...', taintErr);
+          await drawCanvas(null);
+          dataUrl = canvas.toDataURL('image/png', 1.0);
+        }
+
+        const file = dataURLtoFile(dataUrl, filename);
+
+        // Detect iOS (iPhone / iPad / iPod / Mac Touch)
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        // 1. Web Share API (Primary for iOS Safari on HTTPS/localhost & mobile browsers)
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: 'Renungan Pagi',
+              text: 'Renungan Pagi - GPdI COTW Temanggung'
+            });
+            return;
+          } catch (err) {
+            if (err.name === 'AbortError') return;
+            console.warn('Web Share API failed, using iOS sheet fallback:', err);
+          }
+        }
+
+        // 2. iOS Safari Fallback (For HTTP LAN e.g. 192.168.x.x or unsupported iOS contexts)
+        if (isIOS) {
+          showIOSImageSheet(dataUrl);
+          return;
+        }
+
+        // 3. Desktop (Firefox, Chrome, Edge, Safari Desktop) & Android direct download
+        const blob = new Blob([file], { type: 'image/png' });
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = blobUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+        }, 3000);
+
+      } catch (err) {
+        console.error('Download error:', err);
+        alert('Terjadi kesalahan saat mengunduh gambar: ' + err.message);
+      }
+    }
+
+    document.getElementById('downloadBtn').addEventListener('click', handleDownload);
 
     document.getElementById('copyBtn').addEventListener('click', async () => {
       const input = document.getElementById('videoLink');
