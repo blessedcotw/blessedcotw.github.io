@@ -501,7 +501,7 @@ function drawCanvas(ignoreBg = false) {
   // --- Render Verse Reference / Number (Playfair Display SC Gold) ---
   if (activeVerseRef) {
     ctx.fillStyle = '#F59E0B';
-    ctx.font = `700 ${refFontSize}px "Playfair Display", serif`;
+    ctx.font = `700 ${refFontSize}px "Playfair Display SC", serif`;
     ctx.fillText(activeVerseRef, width / 2, currentY);
     currentY += refFontSize * 0.8 + 40;
   }

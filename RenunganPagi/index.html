@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Renungan Pagi GPdI COTW Temanggung</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="icon" type="image/png" href="../SuaraGembala/cotw_logo.png">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Montserrat:ital,wght@0,400..700;1,400..700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap"
+    rel="stylesheet">
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Shared UI System Style (SuaraGembala) -->
+  <link rel="stylesheet" href="../SuaraGembala/styles.css">
+
+  <style>
+    /* Custom adjustments for Renungan Pagi Generator */
+    .status-box {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      min-height: 20px;
+      transition: all 0.3s ease;
+    }
+
+    .status-box.success {
+      color: #ffffff;
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.35));
+      border: 1px solid var(--accent-gold);
+      font-weight: 600;
+      font-size: 0.9rem;
+      box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+    }
+
+    .status-box.err {
+      color: #ef4444;
+      border-color: #7f1d1d;
+      background: rgba(127, 29, 29, 0.2);
+    }
+
+    .video-info-box {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .video-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #f8fafc;
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+
+    .video-date {
+      font-size: 0.85rem;
+      color: var(--accent-gold);
+    }
+
+    .link-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .link-row input {
+      flex: 1;
+    }
+
+    .other-dates-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .other-date-btn {
+      text-align: left;
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #f8fafc;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      transition: all 0.2s;
+    }
+
+    .other-date-btn:hover {
+      border-color: var(--accent-gold);
+      background: #1e293b;
+      color: var(--accent-gold);
+    }
+
+    .footer-note {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app-container">
+
+    <!-- Top Bar: Minimal Header -->
+    <header class="minimal-header">
+      <div class="brand">
+        <img src="../SuaraGembala/cotw_logo.png" alt="COTW Logo" class="brand-logo">
+        <span class="brand-title">Renungan Pagi GPdI COTW Temanggung</span>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <!-- Left Panel: Control Form -->
+      <section class="control-panel">
+
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-calendar-day"></i> Pilih Tanggal Video</h3>
+          </div>
+
+          <div class="form-group">
+            <label for="datePick">Tanggal Renungan</label>
+            <div class="native-date-wrapper">
+              <input type="text" id="dateDisplayText" class="form-control readable-date-input" readonly
+                placeholder="Pilih Tanggal...">
+              <input type="date" id="datePick" class="hidden-native-date">
+              <button type="button" id="triggerDateBtn" class="btn-icon calendar-trigger-btn" title="Buka Kalender">
+                <i class="fa-regular fa-calendar-days"></i>
+              </button>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" id="fetchBtn" style="width: 100%; justify-content: center; margin-top: 10px;">
+            <i class="fa-solid fa-magnifying-glass"></i> Cari Video Renungan
+          </button>
+
+          <div class="status-box" id="status">Memuat daftar video dari channel YouTube…</div>
+        </div>
+
+        <!-- Section Optional Nearby Videos -->
+        <div class="card" id="otherCard" style="display:none;">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-list-ul"></i> Tanggal Terdekat yang Tersedia</h3>
+          </div>
+          <div class="other-dates-list" id="otherDates"></div>
+        </div>
+
+        <!-- Section Auto Video Frame Picker -->
+        <div class="card" id="frameCard">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-film"></i> Pilih Frame Potongan Video</h3>
+          </div>
+          <p style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 10px;">
+            Pilih potongan gambar otomatis dari isi video:
+          </p>
+          <div id="frameGrid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+            <div style="font-size:0.8rem; color:var(--text-muted); grid-column:1/-1;">Pilih video terlebih dahulu.</div>
+          </div>
+        </div>
+
+        <!-- Section Link Copy -->
+        <div class="card" id="linkCard" style="display:none;">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-link"></i> Link Video YouTube</h3>
+          </div>
+          <div class="video-info-box">
+            <div class="video-title" id="videoTitle"></div>
+            <div class="video-date" id="videoDate"></div>
+          </div>
+          <div class="form-group">
+            <label for="videoLink">Tautan Stiker IG Story</label>
+            <div class="link-row">
+              <input type="text" id="videoLink" class="form-control" readonly>
+              <button id="copyBtn" class="btn-icon" style="padding: 10px 16px;">
+                <i class="fa-regular fa-copy"></i> Salin
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Right Panel: Live Story Preview Canvas -->
+      <section class="preview-panel">
+        <div class="canvas-card">
+          <div class="canvas-wrapper">
+            <canvas id="storyCanvas" width="1080" height="1920"></canvas>
+          </div>
+          <div class="canvas-controls">
+            <button id="downloadBtn" class="btn btn-primary" disabled class="disabled">
+              <i class="fa-solid fa-download"></i> Download PNG
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+  </div>
+
+  <script>
+    const CHANNEL_ID = 'UC6VkYFvyt-KJ47wvfxSHt6Q';
+    const RSS_URL = 'https://www.youtube.com/feeds/videos.xml?channel_id=' + CHANNEL_ID;
+    const PROXY = 'https://api.allorigins.win/raw?url=';
+
+    let videos = [];
+    let currentVideo = null;
+    let logoImg = null;
+    let customImage = null;
+    let isFontsLoaded = false;
+
+    const statusEl = document.getElementById('status');
+    const datePick = document.getElementById('datePick');
+    const dateDisplayText = document.getElementById('dateDisplayText');
+    const triggerDateBtn = document.getElementById('triggerDateBtn');
+    const fetchBtn = document.getElementById('fetchBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const otherCard = document.getElementById('otherCard');
+    const otherDates = document.getElementById('otherDates');
+    const linkCard = document.getElementById('linkCard');
+    const customImgInput = document.getElementById('customImgInput');
+
+    function setStatus(msg, type) {
+      statusEl.innerHTML = msg;
+      if (type === 'err') {
+        statusEl.className = 'status-box err';
+      } else if (type === 'success') {
+        statusEl.className = 'status-box success';
+      } else {
+        statusEl.className = 'status-box';
+      }
+    }
+
+    function dateKey(d) {
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    function formatDateIndonesian(dateObj) {
+      if (!dateObj || isNaN(dateObj.getTime())) return '';
+      const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      const monthNames = [
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+      ];
+      return `${days[dateObj.getDay()]}, ${dateObj.getDate()} ${monthNames[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+    }
+
+    function syncDateDisplay(dateObj) {
+      if (!dateObj) return;
+      const yyyy = dateObj.getFullYear();
+      const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const dd = String(dateObj.getDate()).padStart(2, '0');
+      datePick.value = `${yyyy}-${mm}-${dd}`;
+      dateDisplayText.value = formatDateIndonesian(dateObj);
+    }
+
+    const openCalendar = () => {
+      if (!datePick) return;
+      if (typeof datePick.showPicker === 'function') {
+        datePick.showPicker();
+      } else {
+        datePick.click();
+      }
+    };
+
+    dateDisplayText.addEventListener('click', openCalendar);
+    triggerDateBtn.addEventListener('click', openCalendar);
+
+    datePick.addEventListener('change', (e) => {
+      if (e.target.value) {
+        const selectedDate = new Date(e.target.value + 'T00:00:00');
+        dateDisplayText.value = formatDateIndonesian(selectedDate);
+      }
+    });
+
+    // Preload COTW Logo
+    function preloadLogo() {
+      return new Promise((resolve) => {
+        const logo = new Image();
+        logo.src = '../SuaraGembala/cotw_logo.png';
+        logo.onload = () => { logoImg = logo; resolve(); };
+        logo.onerror = resolve;
+      });
+    }
+
+    async function loadFeed() {
+      const PROXIES = [
+        'https://songrepo-userdata.mm-cotw.workers.dev/youtube-feed',
+        'https://api.allorigins.win/raw?url=' + encodeURIComponent(RSS_URL),
+        'https://api.allorigins.win/get?url=' + encodeURIComponent(RSS_URL),
+        'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(RSS_URL)
+      ];
+
+      let lastError = null;
+      let text = null;
+
+      for (const proxyUrl of PROXIES) {
+        try {
+          const res = await fetch(proxyUrl);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const raw = await res.text();
+          if (proxyUrl.includes('/get?')) {
+            try {
+              const parsed = JSON.parse(raw);
+              text = parsed.contents;
+            } catch (e) { }
+          } else {
+            text = raw;
+          }
+          if (text && (text.includes('<feed') || text.includes('<entry'))) break;
+        } catch (err) {
+          lastError = err;
+          console.warn('Proxy failed:', proxyUrl, err);
+        }
+      }
+
+      try {
+        if (!text) throw lastError || new Error('Gagal dari semua proxy');
+        const xml = new DOMParser().parseFromString(text, 'text/xml');
+        const entries = Array.from(xml.getElementsByTagName('entry'));
+        if (entries.length === 0) throw new Error('Feed kosong');
+
+        videos = entries.map(entry => {
+          const videoIdEl = entry.querySelector('videoId') || entry.getElementsByTagName('yt:videoId')[0] || entry.getElementsByTagName('id')[0];
+          const videoId = videoIdEl ? videoIdEl.textContent.trim().split(':').pop() : '';
+
+          const titleEl = entry.querySelector('title') || entry.getElementsByTagName('title')[0];
+          const title = titleEl ? titleEl.textContent.trim() : '(tanpa judul)';
+
+          const publishedEl = entry.querySelector('published') || entry.getElementsByTagName('published')[0];
+          const published = publishedEl ? new Date(publishedEl.textContent.trim()) : new Date();
+
+          return { id: videoId, title, published, dateKey: dateKey(published) };
+        })
+          // 1. Saring HANYA video yang mengandung frasa 'renungan pagi' (Mengabaikan Live Streaming / Ibadah / Shorts / Video Lain)
+          .filter(v => v.id && v.title.toLowerCase().includes('renungan pagi'))
+          // 2. Urutkan dari publikasi terbaru ke terlama
+          .sort((a, b) => b.published - a.published);
+
+        setStatus('Termuat ' + videos.length + ' video Renungan Pagi terbaru.');
+        if (videos.length > 0) {
+          syncDateDisplay(videos[0].published);
+          showVideo(videos[0]);
+        }
+      } catch (err) {
+        console.error(err);
+        setStatus('Gagal memuat feed YouTube (' + err.message + ')', 'err');
+        drawCanvas(null);
+      }
+    }
+
+    function findVideoForDate(key) {
+      // Mengambil video Renungan Pagi pada tanggal tersebut (jika ada lebih dari 1, diambil yang terbit paling pagi/awal)
+      return videos.find(v => v.dateKey === key);
+    }
+
+    function nearestVideos(key, count) {
+      const target = new Date(key).getTime();
+      return [...videos]
+        .sort((a, b) => Math.abs(a.published.getTime() - target) - Math.abs(b.published.getTime() - target))
+        .slice(0, count);
+    }
+
+    let selectedFrameUrl = null;
+    let selectedFrameImg = null;
+
+    function loadVideoFrame(url) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = url;
+      });
+    }
+
+    async function setupFramePicker(videoId) {
+      const frameGrid = document.getElementById('frameGrid');
+      frameGrid.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); grid-column:1/-1;">Memuat potongan gambar video...</div>';
+
+      // YouTube Full HD (1080p/720p) Frame Snapshots with fallback chain:
+      // maxres1.jpg / sd1.jpg (Awal 25% - Full HD)
+      // maxres2.jpg / sd2.jpg (Tengah 50% - Full HD)
+      const frameUrls = [
+        { label: 'Utama (HD)', url: `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`, fallback: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` },
+        { label: 'Awal (25%)', url: `https://i.ytimg.com/vi/${videoId}/maxres1.jpg`, fallback: `https://i.ytimg.com/vi/${videoId}/sd1.jpg` },
+        { label: 'Tengah (50%)', url: `https://i.ytimg.com/vi/${videoId}/maxres2.jpg`, fallback: `https://i.ytimg.com/vi/${videoId}/sd2.jpg` }
+      ];
+
+      frameGrid.innerHTML = '';
+      selectedFrameUrl = frameUrls[0].url;
+      selectedFrameImg = (await loadVideoFrame(frameUrls[0].url)) || (await loadVideoFrame(frameUrls[0].fallback));
+
+      frameUrls.forEach(async (item, idx) => {
+        const thumbDiv = document.createElement('div');
+        thumbDiv.className = `bg-thumb ${idx === 0 ? 'active' : ''}`;
+        thumbDiv.style.aspectRatio = '16/9';
+        thumbDiv.title = `Pilih ${item.label}`;
+
+        const img = document.createElement('img');
+        img.src = item.url;
+        img.onerror = () => { img.src = item.fallback; };
+        img.alt = item.label;
+        thumbDiv.appendChild(img);
+
+        thumbDiv.addEventListener('click', async () => {
+          document.querySelectorAll('#frameGrid .bg-thumb').forEach(el => el.classList.remove('active'));
+          thumbDiv.classList.add('active');
+          selectedFrameUrl = item.url;
+          selectedFrameImg = (await loadVideoFrame(item.url)) || (await loadVideoFrame(item.fallback));
+          drawCanvas(currentVideo);
+        });
+
+        frameGrid.appendChild(thumbDiv);
+      });
+    }
+
+    // Video Player Frame Capture Logic
+    const captureFrameBtn = document.getElementById('captureFrameBtn');
+    if (captureFrameBtn) {
+      captureFrameBtn.addEventListener('click', () => {
+        const videoPlayer = document.getElementById('videoPlayer');
+        if (!videoPlayer || videoPlayer.readyState < 2) return;
+
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = videoPlayer.videoWidth || 1280;
+        tempCanvas.height = videoPlayer.videoHeight || 720;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(videoPlayer, 0, 0, tempCanvas.width, tempCanvas.height);
+
+        const img = new Image();
+        img.onload = () => {
+          selectedFrameImg = img;
+          document.querySelectorAll('#frameGrid .bg-thumb').forEach(el => el.classList.remove('active'));
+          drawCanvas(currentVideo);
+        };
+        img.src = tempCanvas.toDataURL('image/jpeg', 0.95);
+      });
+    }
+
+    async function drawCanvas(video) {
+      const canvas = document.getElementById('storyCanvas');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+
+      // 1. Solid Pure Black Base Background
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, W, H);
+
+      // 2. Blurred Rotated Background Image (30% Opacity, 25 Degree Rotation, Cover Ratio)
+      const thumbnail = selectedFrameImg || (video ? await loadVideoFrame(`https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`) : null);
+
+      if (thumbnail) {
+        ctx.save();
+        ctx.globalAlpha = 0.30;
+        ctx.filter = 'blur(90px)';
+
+        // Move origin to canvas center for rotation
+        ctx.translate(W / 2, H / 2);
+        ctx.rotate((25 * Math.PI) / 180);
+
+        // Preserve aspect ratio while covering canvas (oversized scale to cover rotated corners)
+        const imgRatio = thumbnail.width / thumbnail.height;
+        const boxRatio = W / H;
+        let bgW, bgH;
+
+        if (imgRatio > boxRatio) {
+          bgH = H * 1.8;
+          bgW = bgH * imgRatio;
+        } else {
+          bgW = W * 1.8;
+          bgH = bgW / imgRatio;
+        }
+
+        ctx.drawImage(thumbnail, -bgW / 2, -bgH / 2, bgW, bgH);
+        ctx.restore();
+      }
+
+      let currentY = 130;
+
+      // 3. Header: Logo
+      if (logoImg) {
+        const logoW = 140;
+        const logoH = (logoImg.height / logoImg.width) * logoW;
+        ctx.drawImage(logoImg, (W - logoW) / 2, currentY, logoW, logoH);
+        currentY += logoH + 65;
+      } else {
+        currentY += 120;
+      }
+
+      // Header Title 1: "Renungan Pagi" (Great Vibes, Cursive)
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '76px "Great Vibes", cursive';
+      ctx.fillText('Renungan Pagi', W / 2, currentY);
+      currentY += 85;
+
+      // Header Title 2: "GPdI COTW Temanggung" (Gold Accent)
+      ctx.fillStyle = '#F59E0B';
+      ctx.font = '700 52px "Playfair Display", serif';
+      ctx.fillText('GPdI COTW Temanggung', W / 2, currentY);
+      currentY += 70;
+
+      // Date Subtitle
+      const dateStr = video ? formatDateIndonesian(video.published) : (dateDisplayText.value || '');
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '400 40px "Playfair Display", serif';
+      ctx.fillText(dateStr, W / 2, currentY);
+      currentY += 80;
+
+      if (!video) {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '500 36px "Montserrat", sans-serif';
+        ctx.fillText('Pilih tanggal & cari video untuk membuat story', W / 2, H / 2 + 100);
+        return;
+      }
+
+      // 4. Draw Selected Video Frame Image Card
+      const cardW = W * 0.88;
+      const cardH = cardW * 9 / 16;
+      const cardX = (W - cardW) / 2;
+      const cardY = currentY + 30;
+
+      if (thumbnail) {
+        ctx.save();
+        roundRect(ctx, cardX, cardY, cardW, cardH, 24);
+        ctx.clip();
+        drawImageCover(ctx, thumbnail, cardX, cardY, cardW, cardH);
+        ctx.restore();
+
+        // Subtle Gold Card Border
+        ctx.save();
+        roundRect(ctx, cardX, cardY, cardW, cardH, 24);
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#f59e0b';
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 5. Video Title Text Below Thumbnail (Bold & Large)
+      let titleY = cardY + cardH + 85;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '700 56px "Montserrat", sans-serif';
+
+      const cleanTitle = video.title.replace(/,?\s*renungan\s+pagi.*$/i, '').trim();
+      const titleLines = getWrappedLines(ctx, cleanTitle, W * 0.86);
+      const titleLineH = 72;
+
+      titleLines.slice(0, 4).forEach((line, idx) => {
+        ctx.fillText(line, W / 2, titleY + (idx * titleLineH));
+      });
+
+      // 6. Minimal Footer Watermark: (YouTube Icon) GPdI COTW Temanggung
+      const footerY = H - 110;
+
+      ctx.save();
+      // Draw small YouTube Badge Icon
+      const ytBoxW = 46, ytBoxH = 32, ytBoxX = W / 2 - 180, ytBoxY = footerY - 16;
+      roundRect(ctx, ytBoxX, ytBoxY, ytBoxW, ytBoxH, 8);
+      ctx.fillStyle = '#FF0000';
+      ctx.fill();
+
+      // Play Triangle inside YouTube icon
+      ctx.beginPath();
+      ctx.moveTo(ytBoxX + 18, ytBoxY + 10);
+      ctx.lineTo(ytBoxX + 32, ytBoxY + 16);
+      ctx.lineTo(ytBoxX + 18, ytBoxY + 22);
+      ctx.closePath();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fill();
+
+      // Small Text "GPdI COTW Temanggung"
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '500 30px "Montserrat", sans-serif';
+      ctx.fillText('GPdI COTW Temanggung', ytBoxX + 58, footerY + 2);
+      ctx.restore();
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    function drawImageCover(ctx, img, x, y, w, h) {
+      const imgRatio = img.width / img.height;
+      const boxRatio = w / h;
+      let sx, sy, sw, sh;
+      if (imgRatio > boxRatio) {
+        sh = img.height;
+        sw = sh * boxRatio;
+        sx = (img.width - sw) / 2;
+        sy = 0;
+      } else {
+        sw = img.width;
+        sh = sw / boxRatio;
+        sx = 0;
+        sy = (img.height - sh) / 2;
+      }
+      ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+    }
+
+    function getWrappedLines(ctx, text, maxWidth) {
+      if (!text) return [];
+      const words = text.split(' ');
+      const lines = [];
+      let currentLine = words[0] || '';
+
+      for (let i = 1; i < words.length; i++) {
+        const word = words[i];
+        const width = ctx.measureText(currentLine + ' ' + word).width;
+        if (width < maxWidth) {
+          currentLine += ' ' + word;
+        } else {
+          lines.push(currentLine);
+          currentLine = word;
+        }
+      }
+      lines.push(currentLine);
+      return lines;
+    }
+
+    async function showVideo(video) {
+      currentVideo = video;
+      linkCard.style.display = 'block';
+      otherCard.style.display = 'none';
+
+      document.getElementById('videoTitle').textContent = video.title;
+      document.getElementById('videoDate').textContent = formatDateIndonesian(video.published);
+      document.getElementById('videoLink').value = 'https://youtu.be/' + video.id;
+
+      downloadBtn.disabled = false;
+      downloadBtn.classList.remove('disabled');
+
+      setStatus('Membuat gambar story SuaraGembala style…');
+      await setupFramePicker(video.id);
+      await drawCanvas(video);
+      setStatus('<i class="fa-solid fa-circle-check"></i> Gambar siap! Klik Download PNG dan salin link untuk stiker story.', 'success');
+    }
+
+    fetchBtn.addEventListener('click', async () => {
+      const key = datePick.value;
+      if (!key) { setStatus('Pilih tanggal terlebih dahulu.', true); return; }
+      if (videos.length === 0) {
+        setStatus('Memuat data video YouTube...');
+        await loadFeed();
+      }
+      const match = findVideoForDate(key);
+      if (match) {
+        showVideo(match);
+      } else {
+        linkCard.style.display = 'none';
+        downloadBtn.disabled = true;
+        downloadBtn.classList.add('disabled');
+
+        const near = nearestVideos(key, 5);
+        if (near.length === 0) {
+          setStatus('Belum ada data video yang dimuat. Coba refresh halaman.', true);
+          return;
+        }
+        setStatus('Tidak ada video pada tanggal tersebut. Pilihan tanggal terdekat:');
+        otherCard.style.display = 'block';
+        otherDates.innerHTML = '';
+        near.forEach(v => {
+          const btn = document.createElement('button');
+          btn.className = 'other-date-btn';
+          btn.innerHTML = `<strong>${formatDateIndonesian(v.published)}</strong><br><span style="color:var(--text-muted);">${v.title}</span>`;
+          btn.addEventListener('click', () => {
+            syncDateDisplay(v.published);
+            showVideo(v);
+          });
+          otherDates.appendChild(btn);
+        });
+      }
+    });
+
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      if (!currentVideo) return;
+      const canvas = document.getElementById('storyCanvas');
+      const link = document.createElement('a');
+      link.download = 'Renungan_Pagi_' + (datePick.value || 'story') + '.png';
+      link.href = canvas.toDataURL('image/png', 1.0);
+      link.click();
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', async () => {
+      const input = document.getElementById('videoLink');
+      input.select();
+      try {
+        await navigator.clipboard.writeText(input.value);
+        const btn = document.getElementById('copyBtn');
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Tersalin';
+        setTimeout(() => btn.innerHTML = originalHtml, 1500);
+      } catch (e) {
+        document.execCommand('copy');
+      }
+    });
+
+    if (customImgInput) {
+      customImgInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            const img = new Image();
+            img.onload = () => {
+              customImage = img;
+              drawCanvas(currentVideo);
+            };
+            img.src = evt.target.result;
+          };
+          reader.readAsDataURL(file);
+        } else {
+          customImage = null;
+          drawCanvas(currentVideo);
+        }
+      });
+    }
+
+    async function init() {
+      await preloadLogo();
+      document.fonts.ready.then(() => {
+        isFontsLoaded = true;
+        drawCanvas(currentVideo);
+      });
+      loadFeed();
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+
+</html>

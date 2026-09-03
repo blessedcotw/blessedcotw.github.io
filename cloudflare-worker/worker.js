@@ -182,10 +182,33 @@ export default {
       });
     }
 
+    // Route: GET /youtube-feed → proxy ke YouTube RSS Feed
+    if (url.pathname === '/youtube-feed' && method === 'GET') {
+      const ytUrl = 'https://www.youtube.com/feeds/videos.xml?channel_id=UC6VkYFvyt-KJ47wvfxSHt6Q';
+      try {
+        const res = await fetch(ytUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/xml, text/xml, */*'
+          }
+        });
+        const xmlText = await res.text();
+        return new Response(xmlText, {
+          status: res.status,
+          headers: {
+            'Content-Type': 'application/xml; charset=utf-8',
+            ...CORS_HEADERS,
+          },
+        });
+      } catch (e) {
+        return errorResponse(`Gagal mengambil YouTube feed: ${e.message}`, 502);
+      }
+    }
+
     // Route tidak dikenali → info endpoint
     return new Response(JSON.stringify({
       message: 'SongRepo Worker aktif.',
-      routes: ['GET /github/*', 'PUT /github/*', 'DELETE /github/*']
+      routes: ['GET /youtube-feed', 'GET /github/*', 'PUT /github/*', 'DELETE /github/*']
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
