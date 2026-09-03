@@ -469,26 +469,57 @@
       if (thumbnail) {
         ctx.save();
         ctx.globalAlpha = 0.30;
-        ctx.filter = 'blur(90px)';
 
-        // Move origin to canvas center for rotation
-        ctx.translate(W / 2, H / 2);
-        ctx.rotate((25 * Math.PI) / 180);
+        // Check Canvas 2D ctx.filter support (iOS Safari < 16.4 doesn't support ctx.filter)
+        if ('filter' in ctx) {
+          ctx.filter = 'blur(90px)';
 
-        // Preserve aspect ratio while covering canvas (oversized scale to cover rotated corners)
-        const imgRatio = thumbnail.width / thumbnail.height;
-        const boxRatio = W / H;
-        let bgW, bgH;
+          ctx.translate(W / 2, H / 2);
+          ctx.rotate((25 * Math.PI) / 180);
 
-        if (imgRatio > boxRatio) {
-          bgH = H * 1.8;
-          bgW = bgH * imgRatio;
+          const imgRatio = thumbnail.width / thumbnail.height;
+          const boxRatio = W / H;
+          let bgW, bgH;
+
+          if (imgRatio > boxRatio) {
+            bgH = H * 1.8;
+            bgW = bgH * imgRatio;
+          } else {
+            bgW = W * 1.8;
+            bgH = bgW / imgRatio;
+          }
+
+          ctx.drawImage(thumbnail, -bgW / 2, -bgH / 2, bgW, bgH);
         } else {
-          bgW = W * 1.8;
-          bgH = bgW / imgRatio;
+          // Fallback for iOS Safari: Multi-pass downsampled Offscreen Canvas Blur
+          const blurCanvas = document.createElement('canvas');
+          blurCanvas.width = 30; // Downscaling creates natural hardware blur on iOS Safari
+          blurCanvas.height = 54;
+          const blurCtx = blurCanvas.getContext('2d');
+
+          // Multi-stage downsample
+          blurCtx.drawImage(thumbnail, 0, 0, blurCanvas.width, blurCanvas.height);
+
+          ctx.translate(W / 2, H / 2);
+          ctx.rotate((25 * Math.PI) / 180);
+
+          const imgRatio = thumbnail.width / thumbnail.height;
+          const boxRatio = W / H;
+          let bgW, bgH;
+
+          if (imgRatio > boxRatio) {
+            bgH = H * 1.8;
+            bgW = bgH * imgRatio;
+          } else {
+            bgW = W * 1.8;
+            bgH = bgW / imgRatio;
+          }
+
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'low';
+          ctx.drawImage(blurCanvas, -bgW / 2, -bgH / 2, bgW, bgH);
         }
 
-        ctx.drawImage(thumbnail, -bgW / 2, -bgH / 2, bgW, bgH);
         ctx.restore();
       }
 
