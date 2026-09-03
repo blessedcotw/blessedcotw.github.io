@@ -310,38 +310,16 @@
     }
 
     async function loadFeed() {
-      const PROXIES = [
-        'https://songrepo-userdata.mm-cotw.workers.dev/youtube-feed',
-        'https://api.allorigins.win/raw?url=' + encodeURIComponent(RSS_URL),
-        'https://api.allorigins.win/get?url=' + encodeURIComponent(RSS_URL),
-        'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(RSS_URL)
-      ];
-
-      let lastError = null;
-      let text = null;
-
-      for (const proxyUrl of PROXIES) {
-        try {
-          const res = await fetch(proxyUrl);
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          const raw = await res.text();
-          if (proxyUrl.includes('/get?')) {
-            try {
-              const parsed = JSON.parse(raw);
-              text = parsed.contents;
-            } catch (e) { }
-          } else {
-            text = raw;
-          }
-          if (text && (text.includes('<feed') || text.includes('<entry'))) break;
-        } catch (err) {
-          lastError = err;
-          console.warn('Proxy failed:', proxyUrl, err);
-        }
-      }
+      const WORKER_URL = 'https://songrepo-userdata.mm-cotw.workers.dev/youtube-feed';
 
       try {
-        if (!text) throw lastError || new Error('Gagal dari semua proxy');
+        const res = await fetch(WORKER_URL);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const text = await res.text();
+        if (!text || (!text.includes('<feed') && !text.includes('<entry'))) {
+          throw new Error('Format data tidak valid');
+        }
+
         const xml = new DOMParser().parseFromString(text, 'text/xml');
         const entries = Array.from(xml.getElementsByTagName('entry'));
         if (entries.length === 0) throw new Error('Feed kosong');
