@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Perpustakaan Lagu — GPdI COTW Temanggung</title>
+  <meta name="description" content="Perpustakaan Lagu GPdI COTW Temanggung. Susun daftar pujian, atur ulang bait, dan unduh PDF/Word/ProPresenter 6.">
+
+  <!-- OpenGraph Meta Tags -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Perpustakaan Lagu — GPdI COTW Temanggung">
+  <meta property="og:description" content="Perpustakaan Lagu GPdI COTW Temanggung. Susun daftar pujian, atur ulang bait, dan unduh PDF/Word/ProPresenter 6.">
+  <meta property="og:image" content="https://blessedcotw.github.io/og_preview.jpg">
+  <meta property="og:url" content="https://blessedcotw.github.io/SongRepo/">
+  <meta property="og:site_name" content="GPdI COTW Temanggung">
+  <meta property="og:locale" content="id_ID">
+
+  <link rel="icon" type="image/png" href="../SuaraGembala/cotw_logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700;800&family=Roboto+Mono:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&display=swap"
+    rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/js-base64@3.7.7/base64.min.js"></script>
+  
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+  <header class="top">
+    <div class="brand">
+      <img src="../SuaraGembala/cotw_logo.png" alt="Logo COTW" class="brand-logo" onerror="this.style.display='none'">
+      <div>
+        <div class="mark">Perpustakaan Lagu <em>GPdI COTW Temanggung</em></div>
+        <div class="sub">Susun daftar pujian, atur ulang bait, unduh PDF/Word/Pro6</div>
+      </div>
+    </div>
+    <div class="status-container">
+      <div class="status" id="scanStatus">memindai folder…</div>
+      <div id="cacheInfo" class="cache-info">
+        <span>Data lokal terakhir diperbarui pada <span id="cacheTime"></span></span>
+        <button id="refreshCacheBtn" class="btn-refresh">🔄 Segarkan</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="app">
+    <main class="pane library-pane">
+      <div id="manualBox" class="manual-box" style="display:none;">
+        <strong>Tidak bisa memindai folder secara otomatis.</strong>
+        Pilih file .txt lagu secara manual (bisa pilih banyak sekaligus).<br><br>
+        <input type="file" id="manualInput" accept=".txt" multiple>
+      </div>
+
+      <div class="search">
+        <span>🔎</span>
+        <input type="text" id="searchInput" placeholder="Cari judul atau lirik lagu…">
+        <button id="clearSearchBtn" class="clear-btn" style="display: none;">✕</button>
+      </div>
+
+      <div class="tabs" id="tabs">
+        <div class="tab active" data-tab="lagu">Lagu <span class="count" id="countLagu">0</span></div>
+        <div class="tab" data-tab="animasi">Animasi <span class="count" id="countAnimasi">0</span></div>
+        <div class="tab" data-tab="chord">Chord <span class="count" id="countChord">0</span></div>
+        <div class="tab" data-tab="manual">user-generated <span class="count" id="countManual">0</span></div>
+      </div>
+
+      <div class="song-list" id="songList"></div>
+    </main>
+
+    <aside class="pane cart-pane">
+      <h2 class="title">Daftar Pujian</h2>
+      <div class="sub">Klik lagu di kiri untuk menambah. Seret untuk atur urutan.</div>
+
+      <div class="field">
+        <label>Nama Ibadah</label>
+        <div class="custom-dropdown" id="eventNameDropdown">
+          <div class="dropdown-trigger" id="dropdownTrigger">
+            <span id="selectedEventName">Ibadah Minggu Pagi</span>
+            <span class="arrow">▼</span>
+          </div>
+          <div class="dropdown-menu hidden" id="dropdownMenu">
+            <div class="dropdown-option" data-value="Ibadah Minggu Pagi">Ibadah Minggu Pagi</div>
+            <div class="dropdown-option" data-value="Ibadah Minggu Siang">Ibadah Minggu Siang</div>
+            <div class="dropdown-option" data-value="Ibadah Minggu Sore">Ibadah Minggu Sore</div>
+            <div class="dropdown-option" data-value="Ibadah Pendalaman Alkitab">Ibadah Pendalaman Alkitab</div>
+            <div class="dropdown-option" data-value="Ibadah COTW Kids">Ibadah COTW Kids</div>
+            <div class="dropdown-option" data-value="Ibadah MOI">Ibadah MOI</div>
+            <div class="dropdown-option" data-value="Ibadah Wanita">Ibadah Wanita</div>
+            <div class="dropdown-input-wrapper">
+              <input type="text" id="eventNameCustom" placeholder="Lainnya (Isi sendiri)...">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label for="eventDate">Tanggal</label>
+        <input type="date" id="eventDate">
+      </div>
+
+      <div class="cart-list" id="cartList"></div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px; width: 100%;">
+        <div style="display: flex; gap: 8px; width: 100%;">
+          <button class="btn dashed" id="addBreakBtn"
+            style="flex: 1; font-family: 'Inter'; font-size: 13px; padding: 9px;">+ Break</button>
+          <button class="btn dashed" id="openManualSongBtn"
+            style="flex: 1; font-family: 'Inter'; font-size: 13px; padding: 9px;">+ Lagu Baru</button>
+        </div>
+        <div style="display: flex; gap: 8px; width: 100%;">
+          <button class="btn ghost" id="saveSonglistBtn"
+            style="flex: 1; font-family: 'Inter'; font-size: 13px; padding: 9px; color: var(--accent-gold); border-color: rgba(245, 158, 11, 0.4);" title="Simpan daftar pujian ini ke Cloud">💾 Simpan Songlist</button>
+          <button class="btn ghost" id="openSonglistModalBtn"
+            style="flex: 1; font-family: 'Inter'; font-size: 13px; padding: 9px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);" title="Buka daftar pujian yang tersimpan di Cloud">📂 Buka Songlist</button>
+        </div>
+      </div>
+    </aside>
+
+    <section class="pane preview-pane">
+      <h2 class="title">Pratinjau</h2>
+      <div class="sub">Tampilan lagu-lagu sesuai urutan di daftar pujian.</div>
+      <div class="preview-controls">
+        <label class="chord-toggle"><input type="checkbox" id="chordToggle"> Tampilkan Chord <em>(jika
+            tersedia)</em></label>
+        <label class="chord-toggle"><input type="checkbox" id="notesToggle"> Tampilkan Terjemahan <em>(jika
+            tersedia)</em></label>
+        <label class="chord-toggle"><input type="checkbox" id="capsToggle"> Lirik Kapital</label>
+      </div>
+      <div class="preview-sheet" id="previewSheet"></div>
+      <div style="display: flex; gap: 8px; margin-top: 10px; width: 100%; max-width: 620px;">
+        <button class="btn export-btn" id="exportBtn" style="flex: 1; margin-top: 0;" disabled>Unduh PDF</button>
+        <button class="btn export-btn" id="exportWordBtn" style="flex: 1; margin-top: 0;" disabled>Unduh Word</button>
+        <button class="btn export-btn" id="exportPro6Btn" style="flex: 1; margin-top: 0;" disabled title="Ekspor daftar lagu ke format ProPresenter 6 (.pro6 / zip)">Unduh Pro6</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="overlay hidden" id="overlay">
+    <div class="editor">
+      <div class="ehead">
+        <div>
+          <div class="eyebrow" id="editorGroupLabel">Lagu</div>
+          <h2 id="editorTitle">Judul Lagu</h2>
+        </div>
+        <button class="close-x" id="closeEditor">✕</button>
+      </div>
+      <div class="ebody">
+        <p class="hint">Centang bagian yang ingin dipakai. Seret <span class="handle">⠿⠿</span> untuk mengubah urutan.
+        </p>
+        <div id="sectionList"></div>
+      </div>
+      <div class="efoot" style="display: flex; gap: 8px; justify-content: flex-end; width: 100%; flex-wrap: wrap;">
+        <button class="btn ghost" id="cancelEditor">Batal</button>
+        <button class="btn ghost" id="deleteSongContentBtn"
+          style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); display: none;">🗑️ Hapus</button>
+        <button class="btn ghost" id="downloadPro6ModalBtn"
+          style="color: var(--accent-gold); border-color: rgba(245, 158, 11, 0.4);" title="Unduh file .pro6 lagu ini">📥 Unduh Pro6</button>
+        <button class="btn ghost" id="editSongContentBtn"
+          style="color: var(--accent-gold); border-color: rgba(245, 158, 11, 0.4);">✏️ Edit Lagu</button>
+        <button class="btn" id="saveEditor" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #ffffff;">Tambah ke Daftar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="manualSongModal">
+    <div class="editor" style="max-width: 600px; width: 95%;">
+      <div class="ehead">
+        <div>
+          <div class="eyebrow">Daftar Pujian</div>
+          <h2>Tambah Lagu Baru</h2>
+        </div>
+        <button class="close-x" id="closeManualSongModal">✕</button>
+      </div>
+      <div class="ebody" style="display: flex; flex-direction: column; gap: 16px; max-height: 60vh; overflow-y: auto;">
+        <div class="field" style="margin-bottom: 0;">
+          <label for="manualSongTitle" style="font-weight: 600;">Judul</label>
+          <input type="text" id="manualSongTitle" placeholder="Ketik judul lagu..."
+            style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius); font-family: 'Inter', sans-serif; font-size: 14px; background: var(--bg-card); outline: none; color: #ffffff;">
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <label
+            style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Section
+            & Lirik</label>
+          <div id="manualSectionsContainer" style="display: flex; flex-direction: column; gap: 14px;">
+            <!-- Dynamic sections injected here -->
+          </div>
+        </div>
+
+        <button class="btn dashed" id="addManualSectionBtn"
+          style="width: 100%; padding: 10px; font-family: 'Inter', sans-serif; font-size: 13px; margin-top: 4px;">+ Tambah
+          Section</button>
+      </div>
+      <div class="efoot">
+        <button class="btn ghost" id="cancelManualSong">Batal</button>
+        <button class="btn" id="saveManualSong" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #ffffff;">Simpan Lagu</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="passwordModal" style="z-index: 2000;">
+    <div id="passwordModalCard" class="editor"
+      style="max-width: 340px; width: 90%; text-align: center; padding: 28px 24px 24px; border-radius: 16px; box-shadow: var(--shadow-lg);">
+      <div id="passwordModalIcon" style="font-size: 32px; margin-bottom: 10px; transition: transform .2s;">🔒</div>
+      <h3 style="margin: 0 0 4px; font-family: 'Montserrat', 'Inter', sans-serif; font-weight: 700; font-size: 16px; color: #ffffff;">Konfirmasi Admin</h3>
+      <p id="passwordPromptText"
+        style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin: 0 0 18px;">Masukkan kata sandi
+        untuk melanjutkan.</p>
+      <div style="position: relative; margin-bottom: 10px;">
+        <input type="password" id="adminPasswordInput" placeholder="Kata sandi..."
+          style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--border-color); border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 14px; background: #0f172a; outline: none; color: #ffffff; text-align: center; box-sizing: border-box; transition: border-color .2s;">
+      </div>
+      <div id="passwordError"
+        style="font-size: 12px; color: #ef4444; font-weight: 500; min-height: 18px; margin-bottom: 14px; opacity: 0; transition: opacity .2s;"></div>
+      <div style="display: flex; gap: 8px; justify-content: center; width: 100%;">
+        <button class="btn ghost" id="cancelPasswordBtn" style="padding: 8px 18px; font-size: 13px;">Batal</button>
+        <button class="btn" id="confirmPasswordBtn"
+          style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #ffffff; padding: 8px 20px; font-size: 13px; min-width: 100px; transition: opacity .2s; border: none;">Konfirmasi</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="songlistModal">
+    <div class="editor" style="max-width: 560px; width: 95%;">
+      <div class="ehead">
+        <div>
+          <div class="eyebrow">Daftar Pujian Tersimpan</div>
+          <h2>Buka Songlist Cloud</h2>
+        </div>
+        <button class="close-x" id="closeSonglistModal">✕</button>
+      </div>
+      <div class="ebody" style="max-height: 60vh; overflow-y: auto;">
+        <div id="savedSonglistsContainer" style="display: flex; flex-direction: column; gap: 8px;">
+          <!-- List of saved songlists rendered dynamically -->
+        </div>
+      </div>
+      <div class="efoot">
+        <button class="btn ghost" id="cancelSonglistModal">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
