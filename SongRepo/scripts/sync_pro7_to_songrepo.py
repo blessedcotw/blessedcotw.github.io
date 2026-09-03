@@ -551,6 +551,30 @@ def main():
 
     # 5. Eksekusi BATCH COMMIT tunggal
     if batch_tree_items:
+        print("\n📦 Menyusun library-bundle.json untuk 1-request super fast loading...")
+        all_songs_bundle = []
+        for pro_path in pro_files:
+            p = decode_pro7_file(pro_path)
+            if p:
+                all_songs_bundle.append({
+                    "filename": p["filename"],
+                    "title": p["title"],
+                    "text": p["text"]
+                })
+
+        bundle_payload = {
+            "updatedAt": datetime.datetime.now().isoformat(),
+            "totalSongs": len(all_songs_bundle),
+            "songs": all_songs_bundle
+        }
+        bundle_json_str = json.dumps(bundle_payload, indent=2)
+        batch_tree_items.append({
+            "path": "library/library-bundle.json",
+            "mode": "100644",
+            "type": "blob",
+            "content": bundle_json_str
+        })
+
         updated_manifest_list = sorted(list(manifest_set))
         manifest_json_str = json.dumps(updated_manifest_list, indent=2)
         batch_tree_items.append({
@@ -560,7 +584,7 @@ def main():
             "content": manifest_json_str
         })
 
-        commit_msg = f"Sync ProPresenter 7: {new_count} lagu baru, {updated_count} diperbarui"
+        commit_msg = f"Sync ProPresenter 7: {new_count} lagu baru, {updated_count} diperbarui (with bundle)"
         success = create_batch_commit(batch_tree_items, commit_msg, headers_write)
         if not success:
             print("❌ Gagal mengeksekusi batch commit ke Cloud.")

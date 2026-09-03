@@ -412,6 +412,29 @@ async function forceRefreshLibrary() {
   const cacheInfo = document.getElementById('cacheInfo');
   if (cacheInfo) cacheInfo.style.display = 'none';
 
+  // 1. Coba unduh library-bundle.json lokal (1-request load)
+  try {
+    const bundleRes = await fetch('../library/library-bundle.json', { cache: 'no-store' });
+    if (bundleRes.ok) {
+      const parsedBundle = await bundleRes.json();
+      if (parsedBundle && Array.isArray(parsedBundle.songs)) {
+        state.songs = parsedBundle.songs.map(f => buildSongRecord(f.filename, f.text));
+        const timestamp = Date.now();
+        showCacheInfo(timestamp);
+        const filesCache = parsedBundle.songs.map(f => ({ filename: f.filename, text: f.text }));
+        await setCache('main_library', { timestamp, files: filesCache });
+
+        statusEl.textContent = `${state.songs.length} lagu dimuat (bundle)`;
+        renderSongList();
+        renderTabCounts();
+        await syncCloudSongs();
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn('Local library-bundle.json belum ada, menggunakan pemindaian biasa:', e);
+  }
+
   let filenames = [];
   try {
     const res = await fetch('../library/library-manifest.json', { cache: 'no-store' });
@@ -2163,11 +2186,41 @@ async function loadCloudSongs() {
 
   const readHeaders = { 'Content-Type': 'application/json' };
 
+  // 1. Coba unduh 1 file bundle tunggal (library-bundle.json) untuk 1-request super fast load
+  try {
+    const bundleRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/library-bundle.json?ref=${branch}`, { headers: readHeaders });
+    if (bundleRes.ok) {
+      const bundleData = await bundleRes.json();
+      const rawText = decodeURIComponent(escape(atob(bundleData.content.replace(/\s/g, ''))));
+      const parsedBundle = JSON.parse(rawText);
+
+      if (parsedBundle && Array.isArray(parsedBundle.songs)) {
+        const cloudCache = {
+          timestamp: Date.now(),
+          files: {}
+        };
+
+        const results = parsedBundle.songs.map(item => {
+          cloudCache.files[item.filename] = item.text;
+          const song = buildSongRecord(item.filename, item.text);
+          song.cloudFilename = item.filename;
+          return song;
+        });
+
+        await setCache('cloud_files_cache', cloudCache);
+        return results;
+      }
+    }
+  } catch (e) {
+    console.warn('Bundle cloud belum ada atau gagal dimuat, menggunakan fallback:', e);
+  }
+
+  // 2. Fallback jika library-bundle.json belum dibuat di repository
   try {
     const manifestRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/library-manifest.json?ref=${branch}`, { headers: readHeaders });
     if (!manifestRes.ok) {
       if (manifestRes.status === 404) {
-        return []; // manifest belum dibuat
+        return [];
       }
       throw new Error(`Gagal memuat manifest dari Worker (status: ${manifestRes.status})`);
     }
