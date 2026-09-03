@@ -336,7 +336,7 @@
 
           return { id: videoId, title, published, dateKey: dateKey(published) };
         })
-          .filter(v => v.id && v.id.length === 11)
+          .filter(v => v.id && v.title.toLowerCase().includes('renungan'))
           .sort((a, b) => b.published - a.published);
 
         setStatus('Termuat ' + videos.length + ' video Renungan Pagi terbaru.');
@@ -576,7 +576,14 @@
       ctx.fillStyle = '#ffffff';
       ctx.font = '700 56px "Montserrat", sans-serif';
 
-      const cleanTitle = video.title.replace(/,?\s*renungan\s+pagi.*$/i, '').trim();
+      let cleanTitle = video.title
+        .replace(/,?\s*renungan\s+pagi.*$/i, '') // Strip ", Renungan Pagi ..." and date
+        .replace(/,\s*$/g, '')                    // Strip trailing comma if left behind
+        .trim();
+
+      if (!cleanTitle || cleanTitle.toLowerCase() === 'renungan pagi') {
+        cleanTitle = video.title; // Keep original if whole title was just 'Renungan Pagi'
+      }
       const titleLines = getWrappedLines(ctx, cleanTitle, W * 0.86);
       const titleLineH = 72;
 
@@ -584,12 +591,23 @@
         ctx.fillText(line, W / 2, titleY + (idx * titleLineH));
       });
 
-      // 6. Minimal Footer Watermark: (YouTube Icon) GPdI COTW Temanggung
+      // 6. Minimal Footer Watermark: (YouTube Icon) GPdI COTW Temanggung (Perfect Centering)
       const footerY = H - 110;
 
       ctx.save();
+      ctx.font = '500 30px "Montserrat", sans-serif';
+
+      const footerText = 'GPdI COTW Temanggung';
+      const textWidth = ctx.measureText(footerText).width;
+      const ytBoxW = 46, ytBoxH = 32, gap = 14;
+      const totalFooterW = ytBoxW + gap + textWidth;
+
+      // Start X coordinate for perfect center alignment
+      const startX = (W - totalFooterW) / 2;
+      const ytBoxX = startX;
+      const ytBoxY = footerY - 16;
+
       // Draw small YouTube Badge Icon
-      const ytBoxW = 46, ytBoxH = 32, ytBoxX = W / 2 - 180, ytBoxY = footerY - 16;
       roundRect(ctx, ytBoxX, ytBoxY, ytBoxW, ytBoxH, 8);
       ctx.fillStyle = '#FF0000';
       ctx.fill();
@@ -606,8 +624,7 @@
       // Small Text "GPdI COTW Temanggung"
       ctx.textAlign = 'left';
       ctx.fillStyle = '#cbd5e1';
-      ctx.font = '500 30px "Montserrat", sans-serif';
-      ctx.fillText('GPdI COTW Temanggung', ytBoxX + 58, footerY + 2);
+      ctx.fillText(footerText, ytBoxX + ytBoxW + gap, footerY + 2);
       ctx.restore();
     }
 

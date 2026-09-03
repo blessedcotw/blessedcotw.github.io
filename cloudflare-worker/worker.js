@@ -212,39 +212,66 @@ export default {
 
         const html = await htmlRes.text();
 
-        // Extract videoRenderer blocks containing videoId and title
-        const videoBlocks = [...html.matchAll(/"videoRenderer":\{"videoId":"([A-Za-z0-9_-]{11})".*?"title":\{"runs":\[\{"text":"([^"]+)"\}/g)];
-        
-        let xmlEntries = '';
-        if (videoBlocks.length > 0) {
-          const seen = new Set();
-          videoBlocks.forEach(match => {
-            const id = match[1];
-            const title = match[2];
-            if (!seen.has(id)) {
+        // Extract video ID, Title, and published Date accurately
+        const entries = [];
+        const seen = new Set();
+
+        const titleMatches = [...html.matchAll(/"lockupMetadataViewModel":\{"title":\{"content":"([^"]+)"\}/g)];
+
+        const monthsMap = {
+          'januari': 0, 'februari': 1, 'maret': 2, 'april': 3, 'mei': 4, 'juni': 5,
+          'juli': 6, 'agustus': 7, 'september': 8, 'oktober': 9, 'november': 10, 'desember': 11
+        };
+
+        titleMatches.forEach(m => {
+          const rawTitle = m[1].replace(/[\r\n]+/g, ' ').trim();
+          const start = m.index;
+          const prevSnippet = html.substring(Math.max(0, start - 3000), start);
+          const watchMatch = [...prevSnippet.matchAll(/\/watch\?v=([A-Za-z0-9_-]{11})/g)];
+          if (watchMatch.length > 0) {
+            const id = watchMatch[watchMatch.length - 1][1];
+            if (!seen.has(id) && rawTitle) {
               seen.add(id);
-              xmlEntries += `
-    <entry>
-      <id>yt:video:${id}</id>
-      <yt:videoId>${id}</yt:videoId>
-      <title>${title}</title>
-      <published>${new Date().toISOString()}</published>
-    </entry>`;
+
+              let pubDate = null;
+              const dateMatch = rawTitle.match(/(\d{1,2})\s+(Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)\s+(\d{4})/i);
+              if (dateMatch) {
+                const day = parseInt(dateMatch[1], 10);
+                const monthStr = dateMatch[2].toLowerCase();
+                const year = parseInt(dateMatch[3], 10);
+                const monthIdx = monthsMap[monthStr];
+                if (monthIdx !== undefined) {
+                  pubDate = new Date(Date.UTC(year, monthIdx, day, 0, 0, 0));
+                }
+              }
+
+              // Filter out cover songs / non-renungan videos (e.g. TANAH AIRKU Cover)
+              const isRenungan = /renungan/i.test(rawTitle) || /pagi/i.test(rawTitle);
+              if (isRenungan && pubDate) {
+                entries.push({ id, title: rawTitle, published: pubDate.toISOString() });
+              }
             }
-          });
-        } else {
-          // Alternative fallback pattern
+          }
+        });
+
+        // Backup fallback
+        if (entries.length === 0) {
           const videoIds = [...new Set([...html.matchAll(/"videoId":"([A-Za-z0-9_-]{11})"/g)].map(m => m[1]))];
           videoIds.slice(0, 15).forEach(id => {
-            xmlEntries += `
-    <entry>
-      <id>yt:video:${id}</id>
-      <yt:videoId>${id}</yt:videoId>
-      <title>Renungan Pagi GPdI COTW Temanggung</title>
-      <published>${new Date().toISOString()}</published>
-    </entry>`;
+            entries.push({ id, title: 'Renungan Pagi GPdI COTW Temanggung', published: new Date().toISOString() });
           });
         }
+
+        let xmlEntries = '';
+        entries.slice(0, 20).forEach(v => {
+          xmlEntries += `
+    <entry>
+      <id>yt:video:${v.id}</id>
+      <yt:videoId>${v.id}</yt:videoId>
+      <title>${v.title}</title>
+      <published>${v.published}</published>
+    </entry>`;
+        });
 
         const customXml = `<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns="http://www.w3.org/2005/Atom">
