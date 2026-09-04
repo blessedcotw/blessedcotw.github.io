@@ -227,14 +227,67 @@ def decode_pro7_file(file_path):
             parts.append("")
 
         full_text = "\n".join(parts).rstrip() + "\n"
+        full_text = normalize_song_lyrics(full_text)
+        formatted_title = normalize_song_lyrics(title).strip()
         return {
-            "title": title,
+            "title": formatted_title if formatted_title else title,
             "filename": sanitize_filename(title),
             "text": full_text
         }
     except Exception as e:
         print(f"  ❌ Gagal mengurai {os.path.basename(file_path)}: {e}")
         return None
+
+DIVINE_WORDS_MAP = {
+    'tuhan': 'Tuhan', 'yesus': 'Yesus', 'allah': 'Allah', 'bapa': 'Bapa',
+    'kristus': 'Kristus', 'raja': 'Raja', 'sion': 'Sion', 'yerusalem': 'Yerusalem',
+    'haleluya': 'Haleluya', 'halleluya': 'Haleluya', 'hosana': 'Hosana',
+    'amin': 'Amin', 'amen': 'Amin', 'roh': 'Roh', 'kudus': 'Kudus'
+}
+
+def normalize_song_lyrics(text: str) -> str:
+    if not text:
+        return ""
+    lines = text.split("\n")
+    formatted_lines = []
+    for line in lines:
+        trimmed = line.strip()
+        if not trimmed or trimmed.startswith("[CHORD]") or trimmed.startswith("[NOTES]"):
+            formatted_lines.append(line)
+            continue
+        if trimmed.startswith("[") and trimmed.endswith("]"):
+            formatted_lines.append(trimmed.upper())
+            continue
+
+        clean_line = re.sub(r'[ \t]+', ' ', line)
+        words = clean_line.split(" ")
+        formatted_words = []
+        for idx, w in enumerate(words):
+            if not w:
+                formatted_words.append("")
+                continue
+            match = re.match(r'^([^\w\s-]*)([\w-]+)([^\w\s-]*)$', w)
+            if not match:
+                formatted_words.append(w)
+                continue
+
+            prefix, word, suffix = match.groups()
+            lower_word = word.lower()
+
+            if lower_word in DIVINE_WORDS_MAP:
+                new_word = DIVINE_WORDS_MAP[lower_word]
+            elif idx == 0:
+                new_word = word.capitalize()
+            elif word.isupper() and len(word) > 1:
+                new_word = lower_word
+            else:
+                new_word = word
+
+            new_word = re.sub(r'-(mu|nya|ku)$', lambda m: '-' + m.group(1).capitalize(), new_word, flags=re.IGNORECASE)
+            formatted_words.append(prefix + new_word + suffix)
+
+        formatted_lines.append(" ".join(formatted_words))
+    return "\n".join(formatted_lines)
 
 # ============================= HTTP / WORKER API =============================
 def http_request(url: str, method: str = "GET", headers: dict = None, body_data: dict = None):
@@ -439,172 +492,36 @@ def create_batch_commit(tree_items: list, commit_message: str, headers_write: di
     return True
 
 
-# ============================= MAIN SYNC LOGIC =============================
-def main():
-    if "--undo" in sys.argv or "--rollback" in sys.argv:
-        undo_sync()
-        return
-
-    if "--dry-run" in sys.argv or "--preview" in sys.argv:
-        dry_run_sync()
-        return
-
-    print("=" * 70)
-    print(" 🎵 SYNC PROPRESENTER 7 TO SONGREPO CLOUD (DECODER V3 ENGINE)")
-    print("=" * 70)
-    print(" 1. Jalankan Sinkronisasi (Upload Batch Commit ke Cloud)")
-    print(" 2. Pratinjau Lokal (Dry Run - Simpan ke Folder Tanpa Upload)")
-    print(" 3. Undo / Hapus Semua Lagu Hasil Sync dari Cloud")
-    mode = input(" Pilihan mode (1/2/3, default: 1): ").strip()
-
-    if mode == "2":
-        dry_run_sync()
-        return
-    elif mode == "3":
-        undo_sync()
-        return
-
-    # 1. Lokasi Library ProPresenter 7
-    default_dir = get_default_pro7_library_path()
-    print(f"\n📂 Default Folder ProPresenter 7: {default_dir}")
-    custom_dir = input(f"Tekan ENTER untuk menggunakan default, atau ketik path lain: ").strip()
-    
-    lib_dir = Path(custom_dir) if custom_dir else default_dir
-    if not lib_dir.exists():
-        print(f"❌ Error: Folder '{lib_dir}' tidak ditemukan!")
-        return
-
-    # 2. Input Password Admin
-    admin_pwd = getpass.getpass("\n🔒 Masukkan Kata Sandi Admin Worker SongRepo: ").strip()
-    if not admin_pwd:
-        print("❌ Kata sandi tidak boleh kosong.")
-        return
-
-    admin_hash = hash_password(admin_pwd)
-    headers_write = {
-        "Content-Type": "application/json",
-        "X-Admin-Hash": admin_hash
-    }
-
-    # 3. Ambil Manifest Cloud
-    print("\n🌐 Mengambil manifest cloud dari GitHub via Worker...")
-    manifest_url = f"{WORKER_BASE_URL}/github/repos/{REPO_NAME}/contents/library/library-manifest.json?ref={BRANCH_NAME}"
-    status, manifest_res = http_request(manifest_url)
-    
-    existing_manifest = []
-    if status == 200:
-        content_b64 = manifest_res.get("content", "")
-        raw_json = base64.b64decode(content_b64).decode("utf-8")
-        existing_manifest = json.loads(raw_json)
-        print(f"✅ Terhubung! Ditemukan {len(existing_manifest)} file di Cloud.")
-    else:
-        print("⚠️ Manifest belum ada di cloud. Akan membuat manifest baru.")
-
-    # 4. Pindai Berkas .pro di Folder
-    pro_files = list(lib_dir.glob("**/*.pro"))
-    print(f"\n🔍 Ditemukan {len(pro_files)} berkas lagu ProPresenter 7 (.pro)")
-
-    new_count = 0
-    updated_count = 0
-    skipped_count = 0
-    manifest_set = set(existing_manifest)
-    batch_tree_items = []
-
-    for idx, pro_path in enumerate(pro_files, 1):
-        parsed = decode_pro7_file(pro_path)
-        if not parsed:
-            continue
-
-        filename = parsed["filename"]
-        song_text = parsed["text"]
-        new_hash = compute_content_hash(song_text)
-        
-        file_url = f"{WORKER_BASE_URL}/github/repos/{REPO_NAME}/contents/library/{filename}?ref={BRANCH_NAME}"
-        file_status, file_res = http_request(file_url)
-
-        if file_status == 200:
-            existing_b64 = file_res.get("content", "").replace("\n", "").replace("\r", "")
-            try:
-                existing_text = base64.b64decode(existing_b64).decode("utf-8")
-                existing_hash = compute_content_hash(existing_text)
-            except Exception:
-                existing_hash = ""
-
-            if existing_hash == new_hash:
-                print(f"  [{idx}/{len(pro_files)}] [SKIP] '{parsed['title']}' (Tidak ada perubahan)")
-                skipped_count += 1
-                continue
-            else:
-                print(f"  [{idx}/{len(pro_files)}] [UPDATE] '{parsed['title']}' (Lirik/chord diperbarui)")
-                updated_count += 1
-        else:
-            print(f"  [{idx}/{len(pro_files)}] [BARU] '{parsed['title']}' (Lagu baru)")
-            new_count += 1
-
-        manifest_set.add(filename)
-        batch_tree_items.append({
-            "path": f"library/{filename}",
-            "mode": "100644",
-            "type": "blob",
-            "content": song_text
-        })
-
-    # 5. Eksekusi BATCH COMMIT tunggal
-    if batch_tree_items:
-        print("\n📦 Menyusun library-bundle.json untuk 1-request super fast loading...")
-        all_songs_bundle = []
-        for pro_path in pro_files:
-            p = decode_pro7_file(pro_path)
-            if p:
-                all_songs_bundle.append({
-                    "filename": p["filename"],
-                    "title": p["title"],
-                    "text": p["text"]
-                })
-
-        bundle_payload = {
-            "updatedAt": datetime.datetime.now().isoformat(),
-            "totalSongs": len(all_songs_bundle),
-            "songs": all_songs_bundle
-        }
-        bundle_json_str = json.dumps(bundle_payload, indent=2)
-        batch_tree_items.append({
-            "path": "library/library-bundle.json",
-            "mode": "100644",
-            "type": "blob",
-            "content": bundle_json_str
-        })
-
-        updated_manifest_list = sorted(list(manifest_set))
-        manifest_json_str = json.dumps(updated_manifest_list, indent=2)
-        batch_tree_items.append({
-            "path": "library/library-manifest.json",
-            "mode": "100644",
-            "type": "blob",
-            "content": manifest_json_str
-        })
-
-        commit_msg = f"Sync ProPresenter 7: {new_count} lagu baru, {updated_count} diperbarui (with bundle)"
-        success = create_batch_commit(batch_tree_items, commit_msg, headers_write)
-        if not success:
-            print("❌ Gagal mengeksekusi batch commit ke Cloud.")
-        
-        # Sync ke Supabase jika configured
-        sync_to_supabase(all_songs_bundle)
-    else:
-        print("\n✨ Tidak ada perubahan lagu yang perlu diunggah.")
-
-    print("\n" + "=" * 70)
-    print(" 🎉 HASIL SINKRONISASI BATCH PROPRESENTER 7:")
-    print(f"   • Lagu baru diunggah: {new_count}")
-    print(f"   • Lagu diperbarui   : {updated_count}")
-    print(f"   • Lagu dilewati     : {skipped_count}")
-    print("=" * 70)
-
 DEFAULT_SUPABASE_URL = "https://iyrsxvmsghdsdgvxzpwk.supabase.co"
 DEFAULT_SUPABASE_SERVICE_ROLE_KEY = "sb_secret_TyANDulj6kqjtOV2Iatydg_td67anyn"
 
-def sync_to_supabase(songs_list):
+def clear_supabase_songs() -> bool:
+    """Mengosongkan / menghapus semua baris dari tabel 'songs' di Supabase Database"""
+    supabase_url = os.getenv("SUPABASE_URL", DEFAULT_SUPABASE_URL)
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", DEFAULT_SUPABASE_SERVICE_ROLE_KEY)
+    if not supabase_url or not service_key:
+        print("❌ Error: SUPABASE_URL & SUPABASE_SERVICE_ROLE_KEY tidak diatur.")
+        return False
+
+    endpoint = f"{supabase_url.rstrip('/')}/rest/v1/songs?id=not.is.null"
+    headers = {
+        "apikey": service_key,
+        "Authorization": f"Bearer {service_key}"
+    }
+
+    req = urllib.request.Request(endpoint, headers=headers, method="DELETE")
+    try:
+        with urllib.request.urlopen(req) as resp:
+            if resp.status in (200, 204):
+                print("  🗑️ [Supabase] Berhasil menghapus/mengosongkan seluruh data lama di tabel 'songs'.")
+                return True
+    except Exception as e:
+        print(f"  ❌ Gagal menghapus tabel songs di Supabase: {e}")
+        return False
+    return False
+
+def sync_to_supabase(songs_list: list):
+    """Upsert daftar lagu ke tabel 'songs' di Supabase Database dalam batch 100 lagu"""
     supabase_url = os.getenv("SUPABASE_URL", DEFAULT_SUPABASE_URL)
     service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", DEFAULT_SUPABASE_SERVICE_ROLE_KEY)
     if not supabase_url or not service_key:
@@ -632,16 +549,101 @@ def sync_to_supabase(songs_list):
         })
 
     chunk_size = 100
+    success_count = 0
     for i in range(0, len(records), chunk_size):
         chunk = records[i:i + chunk_size]
         req = urllib.request.Request(endpoint, data=json.dumps(chunk).encode('utf-8'), headers=headers, method="POST")
         try:
             with urllib.request.urlopen(req) as resp:
                 if resp.status in (200, 201):
-                    print(f"  ✅ [Supabase] Batch {i // chunk_size + 1} ({len(chunk)} lagu) di-upsert.")
+                    success_count += len(chunk)
+                    print(f"  ✅ [Supabase] Batch {i // chunk_size + 1} ({len(chunk)} lagu) berhasil di-upsert.")
         except Exception as e:
             print(f"  ❌ Gagal upsert batch Supabase: {e}")
 
+    print(f"\n🎉 Total {success_count} lagu berhasil disimpan/diperbarui di Supabase Database!")
+
+# ============================= MAIN SYNC LOGIC =============================
+def main():
+    if sys.platform == "win32":
+        try:
+            sys.stdout.reconfigure(encoding='utf-8')
+            sys.stderr.reconfigure(encoding='utf-8')
+        except Exception:
+            pass
+
+    is_init = "--init" in sys.argv or "--initialize" in sys.argv
+    is_dry = "--dry-run" in sys.argv or "--preview" in sys.argv
+
+    if is_dry:
+        dry_run_sync()
+        return
+
+    print("=" * 70)
+    print(" 🎵 SYNC PROPRESENTER 7 TO SUPABASE DATABASE")
+    print("=" * 70)
+
+    if not is_init:
+        print(" 1. Sinkronkan / Update Lagu (Upsert lagu dari ProPresenter 7 ke Supabase)")
+        print(" 2. Initialize / Reset Total Database (HAPUS SEMUA lagu lama di Supabase lalu ganti baru)")
+        print(" 3. Pratinjau Lokal (Dry Run - Simpan ke Folder Tanpa Upload)")
+        mode = input("\n Pilihan mode (1/2/3, default: 1): ").strip()
+
+        if mode == "2":
+            is_init = True
+        elif mode == "3":
+            dry_run_sync()
+            return
+
+    # 1. Lokasi Library ProPresenter 7
+    default_dir = get_default_pro7_library_path()
+    print(f"\n📂 Default Folder ProPresenter 7: {default_dir}")
+    custom_dir = input("Tekan ENTER untuk menggunakan default, atau ketik path lain: ").strip()
+    
+    lib_dir = Path(custom_dir) if custom_dir else default_dir
+    if not lib_dir.exists():
+        print(f"❌ Error: Folder '{lib_dir}' tidak ditemukan!")
+        return
+
+    # 2. Pindai Berkas .pro di Folder
+    pro_files = list(lib_dir.glob("**/*.pro"))
+    print(f"\n🔍 Ditemukan {len(pro_files)} berkas lagu ProPresenter 7 (.pro)")
+    if not pro_files:
+        print("⚠️ Tidak ada file .pro ditemukan di folder tersebut.")
+        return
+
+    print(" Mengurai lirik & chord dari file .pro...")
+    songs_list = []
+    for pro_path in pro_files:
+        parsed = decode_pro7_file(pro_path)
+        if parsed:
+            songs_list.append(parsed)
+
+    print(f"  ✅ Berhasil mengurai {len(songs_list)} lagu ProPresenter 7.")
+
+    # 3. Jika mode INITIALIZE / RESET: Minta Konfirmasi Bahaya!
+    if is_init:
+        print("\n" + "!" * 70)
+        print(" 🚨 PERINGATAN BAHAYA: INITIALIZE / RESET TOTAL DATABASE 🚨")
+        print("!" * 70)
+        print(" Aksi ini akan MENGHAPUS SELURUH LAGU di tabel 'songs' Supabase Database")
+        print(f" dan menggantinya dari nol dengan {len(songs_list)} lagu ProPresenter 7 yang baru dipindai.")
+        print("\n (Catatan: Data lagu buatan user di 'user_songs' & playlist di 'songlists' TIDAK akan terhapus).")
+        print("!" * 70)
+        confirm = input("\n⚠️ Ketik 'HAPUS DAN RESET' untuk melanjutkan (atau tekan ENTER untuk batal): ").strip()
+        if confirm != "HAPUS DAN RESET":
+            print("❌ Inisialisasi dibatalkan. Tidak ada data yang dihapus dari Supabase.")
+            return
+
+        print("\n🔥 Memulai pengosongan tabel 'songs' di Supabase...")
+        if not clear_supabase_songs():
+            print("❌ Gagal mengosongkan database. Operasi dibatalkan.")
+            return
+
+    # 4. Upload / Sync ke Supabase Database
+    sync_to_supabase(songs_list)
+
 if __name__ == "__main__":
     main()
+
 

@@ -1565,7 +1565,88 @@ const cancelManualSong = document.getElementById('cancelManualSong');
 const saveManualSong = document.getElementById('saveManualSong');
 const manualSongTitle = document.getElementById('manualSongTitle');
 const manualSectionsContainer = document.getElementById('manualSectionsContainer');
-const addManualSectionBtn = document.getElementById('addManualSectionBtn');
+const autoCleanLyricsBtn = document.getElementById('autoCleanLyricsBtn');
+
+const DIVINE_WORDS = new Set([
+  'tuhan', 'yesus', 'allah', 'bapa', 'kristus', 'raja', 'sion', 'yerusalem',
+  'haleluya', 'halleluya', 'hosana', 'amin', 'amen', 'roh', 'kudus'
+]);
+
+function formatTitle(title) {
+  if (!title) return '';
+  const smallWords = new Set(['yang', 'di', 'ke', 'dari', 'pada', 'dan', 'atau', 'untuk', 'dengan', 'oleh']);
+  return title
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .map((w, i) => {
+      if (i > 0 && smallWords.has(w)) return w;
+      return w.charAt(0).toUpperCase() + w.slice(1);
+    })
+    .join(' ');
+}
+
+function formatLyricsText(text) {
+  if (!text) return '';
+  const lines = text.split('\n');
+  const formattedLines = lines.map(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return '';
+    if (trimmed.startsWith('[CHORD]') || trimmed.startsWith('[NOTES]')) return line;
+    
+    // Replace multiple spaces with single space
+    const cleanLine = line.replace(/[ \t]+/g, ' ');
+    const words = cleanLine.split(' ');
+
+    const formattedWords = words.map((w, idx) => {
+      if (!w) return '';
+      const match = w.match(/^([^\w\s-]*)([\w-]+)([^\w\s-]*)$/);
+      if (!match) return w;
+
+      const prefix = match[1];
+      const word = match[2];
+      const suffix = match[3];
+      const lowerWord = word.toLowerCase();
+
+      let newWord = word;
+      if (DIVINE_WORDS.has(lowerWord)) {
+        newWord = lowerWord.charAt(0).toUpperCase() + lowerWord.slice(1);
+      } else if (idx === 0) {
+        newWord = lowerWord.charAt(0).toUpperCase() + lowerWord.slice(1);
+      } else if (word === word.toUpperCase() && word.length > 1) {
+        newWord = lowerWord;
+      }
+
+      // Format divine suffixes like -Mu, -Nya, -Ku
+      newWord = newWord.replace(/-(mu|nya|ku)$/i, (m, g1) => '-' + g1.charAt(0).toUpperCase() + g1.slice(1).toLowerCase());
+      return prefix + newWord + suffix;
+    });
+
+    return formattedWords.join(' ');
+  });
+
+  return formattedLines.join('\n');
+}
+
+if (autoCleanLyricsBtn) {
+  autoCleanLyricsBtn.addEventListener('click', () => {
+    if (manualSongTitle && manualSongTitle.value) {
+      manualSongTitle.value = formatTitle(manualSongTitle.value);
+    }
+    const sectionRows = manualSectionsContainer.querySelectorAll('.manual-section-row');
+    sectionRows.forEach(row => {
+      const labelEl = row.querySelector('.manual-section-label');
+      const lyricsEl = row.querySelector('.manual-section-lyrics');
+      if (labelEl && labelEl.value) {
+        labelEl.value = formatTitle(labelEl.value);
+      }
+      if (lyricsEl && lyricsEl.value) {
+        lyricsEl.value = formatLyricsText(lyricsEl.value);
+      }
+    });
+    showToast('✨ Teks & ejaan berhasil dirapikan!');
+  });
+}
 
 // Create a new empty section row
 function createManualSectionRow(labelVal = '', lyricsVal = '') {
