@@ -183,7 +183,7 @@ function cleanTitle(raw) {
   t = t.split(/\s+/).filter(w => w && !/^(decoded|animasi|chords?)$/i.test(w)).join(' ');
   t = t.replace(/\s+/g, ' ').trim();
   t = t.replace(/^-+\s*/, '').replace(/\s*-+$/, '').trim();
-  return t || raw;
+  return formatTitle(t || raw);
 }
 
 function escapeHtml(str) {
@@ -264,7 +264,8 @@ function parseSong(filename, text) {
       pendingChord = null;
       pendingNote = null;
     } else if (current) {
-      current.lines.push({ text: line, chord: pendingChord || null, note: pendingNote || null });
+      const cleanLineText = formatLyricsText(line);
+      current.lines.push({ text: cleanLineText, chord: pendingChord || null, note: pendingNote || null });
       pendingChord = null;
       pendingNote = null;
     }
@@ -1709,11 +1710,12 @@ cancelManualSong.addEventListener('click', closeManualModal);
 
 saveManualSong.addEventListener('click', () => {
   checkAdminAuth(async () => {
-    const title = manualSongTitle.value.trim();
-    if (!title) {
+    const rawTitle = manualSongTitle.value.trim();
+    if (!rawTitle) {
       alert('Judul lagu tidak boleh kosong.');
       return;
     }
+    const title = formatTitle(rawTitle);
 
     const rows = manualSectionsContainer.querySelectorAll('.manual-section-row');
     if (rows.length === 0) {
@@ -1727,17 +1729,20 @@ saveManualSong.addEventListener('click', () => {
     const rawTextParts = [];
 
     for (let i = 0; i < rows.length; i++) {
-      const label = rows[i].querySelector('.manual-section-label').value.trim();
-      const lyrics = rows[i].querySelector('.manual-section-lyrics').value.trim();
+      const rawLabel = rows[i].querySelector('.manual-section-label').value.trim();
+      const rawLyrics = rows[i].querySelector('.manual-section-lyrics').value.trim();
 
-      if (!label) {
+      if (!rawLabel) {
         alert(`Nama section ke-${i + 1} tidak boleh kosong.`);
         return;
       }
-      if (!lyrics) {
-        alert(`Lirik section "${label}" tidak boleh kosong.`);
+      if (!rawLyrics) {
+        alert(`Lirik section "${rawLabel}" tidak boleh kosong.`);
         return;
       }
+
+      const label = formatTitle(rawLabel);
+      const lyrics = formatLyricsText(rawLyrics);
 
       rawTextParts.push(`[${label}]`);
       rawTextParts.push(lyrics);
