@@ -1967,7 +1967,7 @@ function promptAndVerifyAdmin(messageText) {
           if (supabaseClient) {
             try {
               await supabaseClient.auth.signInWithPassword({
-                email: 'admin@cotw.org',
+                email: 'mm.cotw@gmail.com',
                 password: pwd
               });
               console.log('✅ Sesi Supabase Auth berhasil diaktifkan.');
