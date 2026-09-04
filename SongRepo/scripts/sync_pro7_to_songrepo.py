@@ -588,6 +588,9 @@ def main():
         success = create_batch_commit(batch_tree_items, commit_msg, headers_write)
         if not success:
             print("❌ Gagal mengeksekusi batch commit ke Cloud.")
+        
+        # Sync ke Supabase jika configured
+        sync_to_supabase(all_songs_bundle)
     else:
         print("\n✨ Tidak ada perubahan lagu yang perlu diunggah.")
 
@@ -598,5 +601,47 @@ def main():
     print(f"   • Lagu dilewati     : {skipped_count}")
     print("=" * 70)
 
+DEFAULT_SUPABASE_URL = "https://iyrsxvmsghdsdgvxzpwk.supabase.co"
+DEFAULT_SUPABASE_SERVICE_ROLE_KEY = "sb_secret_TyANDulj6kqjtOV2Iatydg_td67anyn"
+
+def sync_to_supabase(songs_list):
+    supabase_url = os.getenv("SUPABASE_URL", DEFAULT_SUPABASE_URL)
+    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", DEFAULT_SUPABASE_SERVICE_ROLE_KEY)
+    if not supabase_url or not service_key:
+        print("ℹ️ SUPABASE_URL & SUPABASE_SERVICE_ROLE_KEY tidak diatur. Skip sync ke Supabase.")
+        return
+
+    print("\n⚡ Menyinkronkan lagu ke Supabase PostgreSQL Database...")
+    endpoint = f"{supabase_url.rstrip('/')}/rest/v1/songs"
+    headers = {
+        "apikey": service_key,
+        "Authorization": f"Bearer {service_key}",
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates"
+    }
+
+    records = []
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    for s in songs_list:
+        records.append({
+            "title": s["title"],
+            "filename": s["filename"],
+            "content": s["text"],
+            "content_hash": compute_content_hash(s["text"]),
+            "updated_at": now_iso
+        })
+
+    chunk_size = 100
+    for i in range(0, len(records), chunk_size):
+        chunk = records[i:i + chunk_size]
+        req = urllib.request.Request(endpoint, data=json.dumps(chunk).encode('utf-8'), headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(req) as resp:
+                if resp.status in (200, 201):
+                    print(f"  ✅ [Supabase] Batch {i // chunk_size + 1} ({len(chunk)} lagu) di-upsert.")
+        except Exception as e:
+            print(f"  ❌ Gagal upsert batch Supabase: {e}")
+
 if __name__ == "__main__":
     main()
+

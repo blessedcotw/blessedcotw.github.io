@@ -1,0 +1,30 @@
+name: Keep-Alive Supabase Database
+
+on:
+  schedule:
+    # Berjalan setiap hari Senin jam 06:00 WIB (23:00 UTC hari Minggu)
+    - cron: '0 23 * * 0'
+  workflow_dispatch: # Memungkinkan eksekusi manual via tab Actions di GitHub
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://iyrsxvmsghdsdgvxzpwk.supabase.co' }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'sb_publishable_Hbf4i4xssAYV52uTGF80FA_tcIF4MIS' }}
+        run: |
+          echo "🚀 Mengirim request Keep-Alive ke Supabase REST API..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/songs?select=id&limit=1")
+
+          echo "HTTP Status Code: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✅ Ping Supabase sukses! Project dipastikan tetap aktif (Anti-Pause)."
+          else
+            echo "❌ Gagal terhubung ke Supabase. Status: $HTTP_STATUS"
+            exit 1
+          fi

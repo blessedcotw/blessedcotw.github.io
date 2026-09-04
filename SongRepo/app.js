@@ -1,3 +1,16 @@
+/* ============================= SUPABASE CONFIG ============================= */
+const SUPABASE_URL = 'https://iyrsxvmsghdsdgvxzpwk.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_Hbf4i4xssAYV52uTGF80FA_tcIF4MIS';
+
+let supabaseClient = null;
+if (typeof supabase !== 'undefined') {
+  try {
+    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } catch (e) {
+    console.warn('Gagal inisialisasi Supabase client:', e);
+  }
+}
+
 /* ============================= STATE ============================= */
 const state = {
   songs: [],
@@ -272,7 +285,7 @@ function buildSongRecord(filename, text) {
   
   const fn = (filename || '').toLowerCase();
   const isAnimasi = fn.startsWith('animasi_') || fn.includes('animasi');
-  const isManual = fn.startsWith('manual_');
+  const isManual = fn.startsWith('manual_') || fn.includes('manual');
 
   const groups = [];
   if (isAnimasi) {
@@ -379,144 +392,67 @@ async function scanLibrary() {
     localStorage.removeItem(CACHE_KEY);
   } catch (e) {}
 
-  let cached = null;
-  try {
-    cached = await getCache('main_library');
-  } catch (e) {
-    console.warn('IndexedDB tidak tersedia:', e);
-  }
-  if (cached) {
-    try {
-      const age = Date.now() - cached.timestamp;
-      if (age < CACHE_DURATION && Array.isArray(cached.files) && cached.files.length > 0) {
-        // Parse raw texts into state.songs on the fly
-        state.songs = cached.files.map(f => buildSongRecord(f.filename, f.text));
+  const statusEl = document.getElementById('scanStatus');
+  statusEl.textContent = 'Memuat perpustakaan lagu...';
 
-        const statusEl = document.getElementById('scanStatus');
-        statusEl.textContent = `${state.songs.length} lagu dimuat (dari cache)`;
-        showCacheInfo(cached.timestamp);
-        renderSongList();
-        renderTabCounts();
-        await syncCloudSongs();
-        return;
-      }
-    } catch (e) {
-      console.warn('Gagal membaca cache, memindai ulang...', e);
+  // 1. Coba baca cache lokal (IndexedDB) untuk pemuatan super instan
+  let hasLocalData = false;
+  try {
+    const cached = await getCache('supabase_local_songs');
+    if (cached && Array.isArray(cached.songs) && cached.songs.length > 0) {
+      state.songs = cached.songs.map(item => {
+        const song = buildSongRecord(item.filename, item.content);
+        song.cloudFilename = item.filename;
+        if (item.category === 'manual' || (item.filename && item.filename.includes('manual'))) {
+          song.isManual = true;
+          song.groups = song.groups.filter(g => g !== 'lagu');
+          if (!song.groups.includes('manual')) song.groups.unshift('manual');
+        }
+        return song;
+      });
+      statusEl.textContent = `${state.songs.length} lagu dimuat (Cache Lokal)`;
+      if (cached.timestamp) showCacheInfo(cached.timestamp);
+      renderSongList();
+      renderTabCounts();
+      hasLocalData = true;
+    }
+  } catch (e) {
+    console.warn('Gagal membaca cache lokal IndexedDB:', e);
+  }
+
+  // 2. Lakukan sinkronisasi dari Supabase di background / jika cache kosong
+  await syncSupabaseSongs();
+}
+
+async function syncSupabaseSongs() {
+  const statusEl = document.getElementById('scanStatus');
+  const oldText = statusEl.textContent;
+  statusEl.textContent = 'Menghubungkan ke Database...';
+
+  const supabaseSongs = await loadFromSupabase();
+  if (supabaseSongs && Array.isArray(supabaseSongs) && supabaseSongs.length > 0) {
+    state.songs = supabaseSongs;
+    statusEl.textContent = `${state.songs.length} lagu dimuat (Database)`;
+    showCacheInfo(Date.now());
+    renderSongList();
+    renderTabCounts();
+  } else {
+    if (state.songs.length === 0) {
+      statusEl.textContent = 'Gagal terhubung ke Database.';
+    } else {
+      statusEl.textContent = oldText;
     }
   }
-  await forceRefreshLibrary();
 }
 
 async function forceRefreshLibrary() {
-  const statusEl = document.getElementById('scanStatus');
-  const cacheInfo = document.getElementById('cacheInfo');
-  if (cacheInfo) cacheInfo.style.display = 'none';
-
-  // 1. Coba unduh library-bundle.json lokal (1-request load)
-  try {
-    const bundleRes = await fetch('../library/library-bundle.json', { cache: 'no-store' });
-    if (bundleRes.ok) {
-      const parsedBundle = await bundleRes.json();
-      if (parsedBundle && Array.isArray(parsedBundle.songs)) {
-        state.songs = parsedBundle.songs.map(f => buildSongRecord(f.filename, f.text));
-        const timestamp = Date.now();
-        showCacheInfo(timestamp);
-        const filesCache = parsedBundle.songs.map(f => ({ filename: f.filename, text: f.text }));
-        await setCache('main_library', { timestamp, files: filesCache });
-
-        statusEl.textContent = `${state.songs.length} lagu dimuat (bundle)`;
-        renderSongList();
-        renderTabCounts();
-        await syncCloudSongs();
-        return;
-      }
-    }
-  } catch (e) {
-    console.warn('Local library-bundle.json belum ada, menggunakan pemindaian biasa:', e);
-  }
-
-  let filenames = [];
-  try {
-    const res = await fetch('../library/library-manifest.json', { cache: 'no-store' });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data)) filenames = data.filter(f => /\.txt$/i.test(f));
-    }
-  } catch (e) { /* ignore */ }
-
-  if (filenames.length === 0) {
-    try {
-      const res = await fetch('../library/', { cache: 'no-store' });
-      if (res.ok) {
-        const html = await res.text();
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-        const anchors = Array.from(doc.querySelectorAll('a[href]'));
-        filenames = anchors
-          .map(a => decodeURIComponent(a.getAttribute('href')))
-          .filter(href => /\.txt$/i.test(href) && !href.startsWith('http') && !href.includes('/'))
-          .filter((v, i, arr) => arr.indexOf(v) === i);
-      }
-    } catch (e) { /* ignore */ }
-  }
-
-  if (filenames.length === 0) {
-    statusEl.textContent = 'pemindaian otomatis tidak tersedia';
-    document.getElementById('manualBox').style.display = 'block';
-    return;
-  }
-
-  statusEl.textContent = `memuat 0 / ${filenames.length} lagu…`;
-  const filesCache = [];
-  const songs = [];
-  const batchSize = 50;
-
-  for (let i = 0; i < filenames.length; i += batchSize) {
-    const batch = filenames.slice(i, i + batchSize);
-
-    const batchPromises = batch.map(async (fname) => {
-      try {
-        const r = await fetch('../library/' + encodeURIComponent(fname));
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const text = await r.text();
-        return { filename: fname, text };
-      } catch (e) {
-        console.warn('Gagal memuat', fname, e);
-        return null;
-      }
-    });
-
-    const results = await Promise.all(batchPromises);
-
-    for (const fileObj of results) {
-      if (fileObj) {
-        filesCache.push(fileObj);
-        songs.push(buildSongRecord(fileObj.filename, fileObj.text));
-      }
-    }
-
-    statusEl.textContent = `memuat ${songs.length} / ${filenames.length} lagu…`;
-  }
-
-  state.songs = songs;
-  statusEl.textContent = `${state.songs.length} lagu dimuat`;
-
-  const timestamp = Date.now();
-  showCacheInfo(timestamp);
-  try {
-    await setCache('main_library', { timestamp, files: filesCache });
-  } catch (e) {
-    console.warn('Gagal menyimpan cache ke IndexedDB', e);
-  }
-
-  renderSongList();
-  renderTabCounts();
-  await syncCloudSongs();
+  await syncSupabaseSongs();
 }
 
 document.getElementById('refreshCacheBtn').addEventListener('click', async () => {
-  showToast('Memperbarui data lagu...');
+  showToast('Menyegarkan data dari Database...');
   await forceRefreshLibrary();
-  showToast('Data lagu berhasil diperbarui.');
+  showToast('Data lagu berhasil diperbarui dari Database.');
 });
 
 document.getElementById('manualInput').addEventListener('change', async (e) => {
@@ -1554,7 +1490,7 @@ function openManualSongForEditing(songId) {
 
   state.editingManualSong = {
     id: song.isManual ? song.id : null,
-    cloudFilename: song.cloudFilename || null
+    cloudFilename: song.isManual ? (song.cloudFilename || null) : null
   };
 
   manualSongTitle.value = song.title;
@@ -1576,21 +1512,33 @@ function openManualSongForEditing(songId) {
   }
 }
 
+async function deleteSongFromSupabase(filename) {
+  if (!supabaseClient) return false;
+  const { error } = await supabaseClient
+    .from('user_songs')
+    .delete()
+    .eq('filename', filename);
+
+  if (error) {
+    console.error('Gagal menghapus lagu dari Database:', error);
+    throw new Error('Gagal menghapus lagu dari Database: ' + error.message);
+  }
+  return true;
+}
+
 async function deleteManualSong(songId) {
   const song = state.songs.find(s => s.id === songId);
   if (!song) return;
 
-  const githubRepo = getGithubRepo();
-  if (!githubRepo) {
-    alert('GitHub Repository belum dikonfigurasi.');
-    return;
-  }
-
   if (!confirm('Apakah Anda yakin ingin menghapus lagu ini secara permanen dari Cloud?')) return;
 
-  showToast('Menghapus lagu dari GitHub Cloud...');
+  showToast('Menghapus lagu dari Cloud...');
   try {
-    await deleteSongFromGithub(song.cloudFilename);
+    if (supabaseClient && song.cloudFilename) {
+      await deleteSongFromSupabase(song.cloudFilename);
+    } else if (song.cloudFilename) {
+      await deleteSongFromGithub(song.cloudFilename);
+    }
 
     // Remove from memory
     state.songs = state.songs.filter(s => s.id !== songId);
@@ -1605,11 +1553,7 @@ async function deleteManualSong(songId) {
     showToast('Lagu berhasil dihapus.');
   } catch (e) {
     console.error(e);
-    if (e.message && e.message.includes('403')) {
-      handleWorkerAuthError();
-    } else {
-      alert('Gagal menghapus dari GitHub Cloud: ' + e.message + '\n\nAksi dibatalkan.');
-    }
+    alert('Gagal menghapus dari Cloud: ' + e.message + '\n\nAksi dibatalkan.');
   }
 }
 
@@ -1768,19 +1712,19 @@ saveManualSong.addEventListener('click', () => {
       songRecord.groups.push('chord');
     }
 
-    const githubRepo = getGithubRepo();
-    if (!githubRepo) {
-      alert('GitHub Repository belum dikonfigurasi. Silakan atur di Pengaturan Cloud Sync.');
-      return;
-    }
-
-    showToast(isEditing ? 'Memperbarui lagu di GitHub Cloud...' : 'Mengunggah lagu ke GitHub Cloud...');
+    showToast(isEditing ? 'Memperbarui lagu di Database...' : 'Menyimpan lagu ke Database...');
     saveManualSong.disabled = true;
     saveManualSong.textContent = 'Menyimpan...';
 
     try {
       const fullRawText = `title: ${title}\n\n` + rawTextParts.join('\n');
-      const cloudFilename = await uploadSongToGithub(songRecord, fullRawText, state.editingManualSong.cloudFilename);
+      
+      let cloudFilename = null;
+      if (supabaseClient) {
+        cloudFilename = await saveSongToSupabase(songRecord.title, fullRawText, state.editingManualSong.cloudFilename, songRecord.groups);
+      } else {
+        cloudFilename = await uploadSongToGithub(songRecord, fullRawText, state.editingManualSong.cloudFilename);
+      }
       songRecord.cloudFilename = cloudFilename;
 
       // Update local state memory
@@ -1819,14 +1763,10 @@ saveManualSong.addEventListener('click', () => {
       renderCart();
       renderPreview();
       closeManualModal();
-      showToast(isEditing ? 'Lagu berhasil diperbarui di GitHub Cloud.' : 'Lagu berhasil disimpan ke GitHub Cloud.');
+      showToast(isEditing ? 'Lagu berhasil diperbarui di Database.' : 'Lagu berhasil disimpan ke Database.');
     } catch (e) {
       console.error(e);
-      if (e.message && e.message.includes('403')) {
-        handleWorkerAuthError();
-      } else {
-        alert('Gagal menyinkronkan ke GitHub Cloud: ' + e.message + '\n\nAksi dibatalkan.');
-      }
+      alert('Gagal menyimpan lagu: ' + e.message + '\n\nAksi dibatalkan.');
     } finally {
       saveManualSong.disabled = false;
       saveManualSong.textContent = 'Simpan Lagu';
@@ -1936,6 +1876,20 @@ function promptAndVerifyAdmin(messageText) {
           adminHashCache = hash;
           sessionStorage.setItem('song_repo_is_admin', 'true');
           localStorage.setItem('song_repo_admin_hash', hash);
+
+          // Inisialisasi Sesi Supabase Auth jika terkonfigurasi
+          if (supabaseClient) {
+            try {
+              await supabaseClient.auth.signInWithPassword({
+                email: 'admin@cotw.org',
+                password: pwd
+              });
+              console.log('✅ Sesi Supabase Auth berhasil diaktifkan.');
+            } catch (supaErr) {
+              console.warn('Supabase Auth warning:', supaErr);
+            }
+          }
+
           iconEl.textContent = '✅';
           cleanup();
           resolve(true);
@@ -1993,6 +1947,42 @@ function getAdminHash() {
 }
 function getGithubBranch() {
   return localStorage.getItem('song_repo_github_branch') || DEFAULT_GITHUB_BRANCH;
+}
+
+async function saveSongToSupabase(title, fullRawText, existingFilename = null, groups = []) {
+  if (!supabaseClient) return null;
+
+  const sanitizedTitle = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/(^_|_$)/g, '');
+  let filename = existingFilename;
+  if (!filename || !filename.toLowerCase().includes('manual')) {
+    filename = `manual_${sanitizedTitle}.txt`;
+  }
+  const category = groups.includes('chord') ? 'chord' : (groups.includes('animasi') ? 'animasi' : 'manual');
+
+  // Web App selalu menyimpan lagu buatan/editan user ke tabel `user_songs`
+  // Tabel `songs` dikhususkan eksklusif untuk sinkronisasi otomatis dari skrip Python ProPresenter 7
+  const payload = {
+    title: title,
+    category: category,
+    content: fullRawText,
+    filename: filename,
+    author: localStorage.getItem('song_repo_last_author') || 'Anonim',
+    updated_at: new Date().toISOString()
+  };
+
+  const { data, error } = await supabaseClient
+    .from('user_songs')
+    .upsert(payload, { onConflict: 'filename' });
+
+  if (error) {
+    console.error('Database save error pada tabel user_songs:', error);
+    throw new Error('Gagal menyimpan ke Database (user_songs): ' + error.message);
+  }
+
+  return filename;
 }
 
 async function uploadSongToGithub(songRecord, processedText, existingFilename = null) {
@@ -2179,14 +2169,103 @@ async function purgeJsDelivrCache(repo, branch, path) {
   }
 }
 
+async function loadFromSupabase() {
+  if (!supabaseClient) return null;
+  try {
+    let allData = [];
+    let from = 0;
+    const step = 1000;
+    let hasMore = true;
+
+    // 1. Ambil lagu dari tabel songs (halaman demi halaman)
+    while (hasMore) {
+      const { data, error } = await supabaseClient
+        .from('songs')
+        .select('*')
+        .order('title', { ascending: true })
+        .range(from, from + step - 1);
+
+      if (error) {
+        console.warn('Supabase songs fetch error:', error);
+        break;
+      }
+
+      if (Array.isArray(data) && data.length > 0) {
+        allData.push(...data);
+        if (data.length < step) {
+          hasMore = false;
+        } else {
+          from += step;
+        }
+      } else {
+        hasMore = false;
+      }
+    }
+
+    // 2. Ambil lagu user-generated dari tabel user_songs
+    try {
+      const { data: userSongsData, error: userSongsErr } = await supabaseClient
+        .from('user_songs')
+        .select('*')
+        .order('title', { ascending: true });
+
+      if (!userSongsErr && Array.isArray(userSongsData) && userSongsData.length > 0) {
+        console.log(`⚡ Berhasil memuat ${userSongsData.length} lagu user-generated dari tabel user_songs.`);
+        userSongsData.forEach(item => {
+          item._isUserSongTable = true;
+          allData.push(item);
+        });
+      }
+    } catch (usErr) {
+      console.warn('Gagal membaca tabel user_songs:', usErr);
+    }
+
+    if (allData.length > 0) {
+      console.log(`⚡ Successfully loaded ALL ${allData.length} songs from Supabase (songs + user_songs)!`);
+      const songs = allData.map(item => {
+        const song = buildSongRecord(item.filename, item.content);
+        song.cloudFilename = item.filename;
+        if (item._isUserSongTable || item.category === 'manual' || (item.filename && item.filename.includes('manual'))) {
+          song.isManual = true;
+          song.groups = song.groups.filter(g => g !== 'lagu');
+          if (!song.groups.includes('manual')) song.groups.unshift('manual');
+        }
+        return song;
+      });
+
+      // Simpan cache ke IndexedDB
+      try {
+        const cacheData = {
+          timestamp: Date.now(),
+          songs: allData.map(item => ({ filename: item.filename, content: item.content, category: item.category }))
+        };
+        await setCache('supabase_local_songs', cacheData);
+      } catch (e) {
+        console.warn('Gagal menyimpan cache ke IndexedDB:', e);
+      }
+
+      return songs;
+    }
+  } catch (e) {
+    console.warn('Gagal memuat lagu dari Supabase:', e);
+  }
+  return null;
+}
+
 async function loadCloudSongs() {
+  // 0. Coba muat lagu dari Supabase terlebih dahulu (Utama)
+  const supabaseSongs = await loadFromSupabase();
+  if (supabaseSongs && supabaseSongs.length > 0) {
+    return supabaseSongs;
+  }
+
   const repo = getGithubRepo();
   const branch = getGithubBranch();
   if (!repo) return [];
 
   const readHeaders = { 'Content-Type': 'application/json' };
 
-  // 1. Coba unduh 1 file bundle tunggal (library-bundle.json) untuk 1-request super fast load
+  // 1. Coba unduh 1 file bundle tunggal (library-bundle.json) untuk 1-request super fast load (Fallback 1)
   try {
     const bundleRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/library-bundle.json?ref=${branch}`, { headers: readHeaders });
     if (bundleRes.ok) {
@@ -2349,7 +2428,88 @@ async function ensureAdminHash() {
   return hash;
 }
 
+async function uploadSonglistToSupabase(songlistData) {
+  if (!supabaseClient) return null;
+  const sanitizedEvent = (songlistData.eventName || 'ibadah')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/(^_|_$)/g, '');
+  const dateStr = songlistData.eventDate || new Date().toISOString().slice(0, 10);
+  const filename = `songlist_${dateStr}_${sanitizedEvent}_${songlistData.id.slice(0, 6)}.json`;
+
+  const { data, error } = await supabaseClient
+    .from('songlists')
+    .upsert({
+      event_name: songlistData.eventName,
+      event_date: songlistData.eventDate || null,
+      author: songlistData.author || 'Anonim',
+      filename: filename,
+      cart_data: songlistData.cart || [],
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'filename' });
+
+  if (error) {
+    console.error('Gagal menyimpan songlist ke Database:', error);
+    throw new Error('Gagal menyimpan songlist ke Database: ' + error.message);
+  }
+
+  return filename;
+}
+
+async function loadSupabaseSonglists() {
+  if (!supabaseClient) return [];
+  try {
+    const { data, error } = await supabaseClient
+      .from('songlists')
+      .select('*')
+      .order('updated_at', { ascending: false });
+
+    if (error) {
+      console.warn('Gagal memuat songlists dari Database:', error);
+      return [];
+    }
+
+    if (Array.isArray(data)) {
+      return data.map(item => ({
+        id: item.id,
+        eventName: item.event_name,
+        eventDate: item.event_date,
+        author: item.author,
+        updatedAt: item.updated_at,
+        cart: item.cart_data,
+        cloudFilename: item.filename
+      }));
+    }
+  } catch (e) {
+    console.warn('Gagal memuat songlists dari Database:', e);
+  }
+  return [];
+}
+
+async function deleteSonglistFromSupabase(filename) {
+  if (!supabaseClient) return false;
+  const { error } = await supabaseClient
+    .from('songlists')
+    .delete()
+    .eq('filename', filename);
+
+  if (error) {
+    console.error('Gagal menghapus songlist dari Database:', error);
+    throw new Error('Gagal menghapus songlist dari Database: ' + error.message);
+  }
+  return true;
+}
+
 async function uploadSonglistToGithub(songlistData) {
+  if (supabaseClient) {
+    try {
+      const supaFilename = await uploadSonglistToSupabase(songlistData);
+      if (supaFilename) return supaFilename;
+    } catch (e) {
+      console.warn('Gagal menyimpan songlist ke Supabase, fallback ke GitHub:', e);
+    }
+  }
+
   const adminHash = await ensureAdminHash();
   const repo = getGithubRepo();
   const branch = getGithubBranch();
@@ -2398,46 +2558,17 @@ async function uploadSonglistToGithub(songlistData) {
     throw new Error(`Gagal menyimpan file songlist: ${uploadRes.statusText}`);
   }
 
-  // Update songlists-manifest.json
-  let manifestSha = null;
-  let manifestList = [];
-  try {
-    const manifestRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/songlists/songlists-manifest.json?ref=${branch}`, { headers: readHeaders });
-    if (manifestRes.ok) {
-      const manifestData = await manifestRes.json();
-      manifestSha = manifestData.sha;
-      const rawText = decodeURIComponent(escape(atob(manifestData.content.replace(/\s/g, ''))));
-      manifestList = JSON.parse(rawText);
-    }
-  } catch (e) {}
-
-  if (!manifestList.includes(filename)) {
-    manifestList.push(filename);
-  }
-
-  const manifestB64 = utf8ToBase64(JSON.stringify(manifestList, null, 2));
-  const updateManifestRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/songlists/songlists-manifest.json`, {
-    method: 'PUT',
-    headers: writeHeaders,
-    body: JSON.stringify({
-      message: `Update songlists manifest for: ${songlistData.eventName}`,
-      content: manifestB64,
-      sha: manifestSha || undefined,
-      branch
-    })
-  });
-
-  if (!updateManifestRes.ok) {
-    if (updateManifestRes.status === 403) {
-      throw new Error('Kata sandi admin tidak valid. Akses ditolak oleh server.');
-    }
-    throw new Error(`Gagal memperbarui manifest songlist: ${updateManifestRes.statusText}`);
-  }
-
   return filename;
 }
 
 async function loadCloudSonglists() {
+  if (supabaseClient) {
+    const supaSonglists = await loadSupabaseSonglists();
+    if (supaSonglists && supaSonglists.length > 0) {
+      return supaSonglists;
+    }
+  }
+
   const repo = getGithubRepo();
   const branch = getGithubBranch();
   if (!repo) return [];
@@ -2471,7 +2602,6 @@ async function loadCloudSonglists() {
       }
     }
 
-    // Sort by date / updatedAt descending
     songlists.sort((a, b) => new Date(b.updatedAt || b.eventDate) - new Date(a.updatedAt || a.eventDate));
     return songlists;
   } catch (e) {
@@ -2481,6 +2611,15 @@ async function loadCloudSonglists() {
 }
 
 async function deleteSonglistFromGithub(filename) {
+  if (supabaseClient) {
+    try {
+      await deleteSonglistFromSupabase(filename);
+      return;
+    } catch (e) {
+      console.warn('Gagal menghapus songlist dari Supabase:', e);
+      throw e;
+    }
+  }
   const adminHash = await ensureAdminHash();
   const repo = getGithubRepo();
   const branch = getGithubBranch();
@@ -2654,7 +2793,7 @@ document.getElementById('openSonglistModalBtn').addEventListener('click', async 
         try {
           await deleteSonglistFromGithub(sl.cloudFilename);
           btn.closest('.songlist-row').remove();
-          showToast('Songlist berhasil dihapus dari Cloud.');
+          showToast('Songlist berhasil dihapus dari Database.');
         } catch (e) {
           console.error(e);
           showToast('Gagal menghapus songlist: ' + e.message);
@@ -2663,6 +2802,6 @@ document.getElementById('openSonglistModalBtn').addEventListener('click', async 
     });
   } catch (e) {
     console.error(e);
-    savedSonglistsContainer.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 20px;">Gagal memuat songlist dari Cloud.</div>';
+    savedSonglistsContainer.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 20px;">Gagal memuat songlist dari Database.</div>';
   }
 });
