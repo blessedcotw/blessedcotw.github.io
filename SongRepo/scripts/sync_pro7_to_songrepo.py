@@ -29,10 +29,23 @@ if os.path.exists(pb_out_local):
 elif os.path.exists(pb_out_parent):
     sys.path.insert(0, pb_out_parent)
 
+# Pastikan paket python 'protobuf' terpasang
+try:
+    import google.protobuf
+except ImportError:
+    print("⚡ Modul 'protobuf' belum terpasang di Python. Mengunduh & menginstal secara otomatis...")
+    import subprocess
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "protobuf"])
+    except Exception as pip_err:
+        print(f"❌ Gagal menginstal 'protobuf' via pip: {pip_err}")
+
 try:
     import presentation_pb2
-except ImportError:
-    print(f"❌ Error: Tidak dapat menemukan modul Protobuf di '{pb_out_local}' atau '{pb_out_parent}'.")
+except ImportError as e:
+    print(f"❌ Error: Gagal mengimpor modul Protobuf dari '{pb_out_local}' atau '{pb_out_parent}'.")
+    print(f"   Detail kesalahan: {e}")
+    print("   Pastikan folder 'scripts/pb_out' ada dan berisi file '_pb2.py'.")
     sys.exit(1)
 
 # ============================= KONFIGURASI =============================
