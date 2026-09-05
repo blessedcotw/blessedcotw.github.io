@@ -1,0 +1,12 @@
+# Python cache & temporary outputs
+__pycache__/
+*.pyc
+preview_output/
+*.log
+scripts/backups/
+
+# Sensitive background scheduler scripts & local logs
+scripts/sync_scheduler.py
+scripts/sync_scheduler.log
+*.plist
+*.bat

@@ -1,4 +1,4 @@
-/* ============================= SUPABASE CONFIG ============================= */
+/* ============================= DATABASE CONFIG ============================= */
 const SUPABASE_URL = 'https://iyrsxvmsghdsdgvxzpwk.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Hbf4i4xssAYV52uTGF80FA_tcIF4MIS';
 
@@ -7,7 +7,7 @@ if (typeof supabase !== 'undefined') {
   try {
     supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   } catch (e) {
-    console.warn('Gagal inisialisasi Supabase client:', e);
+    console.warn('Gagal inisialisasi Database client:', e);
   }
 }
 
@@ -30,6 +30,20 @@ const MONTHS_ID = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli
 /* ============================= UTIL ============================= */
 function uid() { return Math.random().toString(36).slice(2, 10); }
 
+function showSyncLoading(title = 'Menyinkronkan Cloud...', subtitle = 'Memuat data terbaru dari database') {
+  const overlay = document.getElementById('syncLoadingOverlay');
+  const titleEl = document.getElementById('syncLoadingTitle');
+  const subEl = document.getElementById('syncLoadingSubtitle');
+  if (titleEl) titleEl.textContent = title;
+  if (subEl) subEl.textContent = subtitle;
+  if (overlay) overlay.classList.remove('hidden');
+}
+
+function hideSyncLoading() {
+  const overlay = document.getElementById('syncLoadingOverlay');
+  if (overlay) overlay.classList.add('hidden');
+}
+
 function setupPointerDrag(container, onReorder) {
   let draggingRow = null;
   let activeHandle = null;
@@ -38,13 +52,17 @@ function setupPointerDrag(container, onReorder) {
     const handle = e.target.closest('.handle, [style*="cursor:grab"], [style*="cursor: grab"]');
     if (!handle || !handle.textContent.includes('⠿⠿')) return;
 
-    const row = handle.closest('.sec-row, .cart-item');
+    const row = handle.closest('.sec-row, .cart-item, .manual-section-row');
     if (!row) return;
 
     e.preventDefault();
     draggingRow = row;
     activeHandle = handle;
     row.classList.add('dragging');
+    row.classList.add('dragging-active');
+    if (navigator.vibrate) {
+      try { navigator.vibrate(15); } catch (err) { }
+    }
     row.style.zIndex = '1000';
 
     handle.setPointerCapture(e.pointerId);
@@ -60,7 +78,7 @@ function setupPointerDrag(container, onReorder) {
       draggingRow.style.pointerEvents = '';
 
       if (!elem) return;
-      const targetRow = elem.closest('.sec-row, .cart-item');
+      const targetRow = elem.closest('.sec-row, .cart-item, .manual-section-row');
       if (targetRow && targetRow !== draggingRow && targetRow.parentNode === container) {
         const rect = targetRow.getBoundingClientRect();
         const middleY = rect.top + rect.height / 2;
@@ -75,12 +93,13 @@ function setupPointerDrag(container, onReorder) {
     const onPointerUp = (upEvent) => {
       if (draggingRow) {
         draggingRow.classList.remove('dragging');
+        draggingRow.classList.remove('dragging-active');
         draggingRow.style.zIndex = '';
-        
+
         try {
           activeHandle.releasePointerCapture(upEvent.pointerId);
-        } catch (err) {}
-        
+        } catch (err) { }
+
         draggingRow = null;
         activeHandle = null;
 
@@ -283,7 +302,7 @@ function buildSongRecord(filename, text) {
   const noteLines = parsed.sections.flatMap(s => s.lines.map(l => l.note || ''));
   const searchText = (parsed.title + ' ' + textLines.join(' ') + ' ' + noteLines.join(' ')).toLowerCase();
   const hasChords = parsed.sections.some(s => s.lines.some(l => l.chord));
-  
+
   const fn = (filename || '').toLowerCase();
   const isAnimasi = fn.startsWith('animasi_') || fn.includes('animasi');
   const isManual = fn.startsWith('manual_') || fn.includes('manual');
@@ -391,7 +410,7 @@ async function scanLibrary() {
   // Clear old localStorage cache to free quota
   try {
     localStorage.removeItem(CACHE_KEY);
-  } catch (e) {}
+  } catch (e) { }
 
   const statusEl = document.getElementById('scanStatus');
   statusEl.textContent = 'Memuat perpustakaan lagu...';
@@ -404,6 +423,9 @@ async function scanLibrary() {
       state.songs = cached.songs.map(item => {
         const song = buildSongRecord(item.filename, item.content);
         song.cloudFilename = item.filename;
+        song.uuid = item.uuid || null;
+        song.arrangement_uuid = item.arrangement_uuid || item.uuid || null;
+        song.file_path = item.file_path || null;
         if (item.category === 'manual' || (item.filename && item.filename.includes('manual'))) {
           song.isManual = true;
           song.groups = song.groups.filter(g => g !== 'lagu');
@@ -425,29 +447,37 @@ async function scanLibrary() {
   await syncSupabaseSongs();
 }
 
-async function syncSupabaseSongs() {
+async function syncSupabaseSongs(showOverlay = false) {
   const statusEl = document.getElementById('scanStatus');
   const oldText = statusEl.textContent;
   statusEl.textContent = 'Menghubungkan ke Database...';
 
-  const supabaseSongs = await loadFromSupabase();
-  if (supabaseSongs && Array.isArray(supabaseSongs) && supabaseSongs.length > 0) {
-    state.songs = supabaseSongs;
-    statusEl.textContent = `${state.songs.length} lagu dimuat (Database)`;
-    showCacheInfo(Date.now());
-    renderSongList();
-    renderTabCounts();
-  } else {
-    if (state.songs.length === 0) {
-      statusEl.textContent = 'Gagal terhubung ke Database.';
+  if (showOverlay) {
+    showSyncLoading('Menyinkronkan Database...', 'Memuat perpustakaan lagu terbaru dari cloud database');
+  }
+
+  try {
+    const supabaseSongs = await loadCloudSongs();
+    if (supabaseSongs && Array.isArray(supabaseSongs) && supabaseSongs.length > 0) {
+      state.songs = supabaseSongs;
+      statusEl.textContent = `${state.songs.length} lagu dimuat (Database)`;
+      showCacheInfo(Date.now());
+      renderSongList();
+      renderTabCounts();
     } else {
-      statusEl.textContent = oldText;
+      if (state.songs.length === 0) {
+        statusEl.textContent = 'Gagal terhubung ke Database.';
+      } else {
+        statusEl.textContent = oldText;
+      }
     }
+  } finally {
+    if (showOverlay) hideSyncLoading();
   }
 }
 
 async function forceRefreshLibrary() {
-  await syncSupabaseSongs();
+  await syncSupabaseSongs(true);
 }
 
 document.getElementById('refreshCacheBtn').addEventListener('click', async () => {
@@ -573,16 +603,45 @@ function openEditor(songId, cartId) {
   document.getElementById('saveEditor').textContent = cartId ? 'Simpan Perubahan' : 'Tambah ke Daftar Pujian';
 }
 
+function moveSection(fromIdx, toIdx) {
+  const working = state.editing.working;
+  if (toIdx < 0 || toIdx >= working.length) return;
+  const item = working.splice(fromIdx, 1)[0];
+  working.splice(toIdx, 0, item);
+  renderSectionList();
+}
+
+function selectAllSections(checked) {
+  state.editing.working.forEach(s => s.checked = checked);
+  renderSectionList();
+}
+
+function resetSectionOrder() {
+  const songId = state.editing.songId;
+  if (!songId) return;
+  const song = state.songs.find(s => s.id === songId);
+  if (!song) return;
+
+  const currentCheckedMap = new Map();
+  state.editing.working.forEach(s => currentCheckedMap.set(s.label, s.checked));
+
+  state.editing.working = song.sections.map(s => ({
+    ...s,
+    checked: currentCheckedMap.has(s.label) ? currentCheckedMap.get(s.label) : true
+  }));
+  renderSectionList();
+}
+
 function renderSectionList() {
   const wrap = document.getElementById('sectionList');
   const working = state.editing.working;
   wrap.innerHTML = working.map((s, idx) => `
 <div class="sec-row" data-idx="${idx}">
-  <span class="handle">⠿⠿</span>
-  <label>
+  <span class="handle" title="Seret untuk mengubah urutan">⠿⠿</span>
+  <label style="flex: 1; display: flex; align-items: center; gap: 8px; cursor: pointer; margin: 0; min-width: 0;">
     <input type="checkbox" data-idx="${idx}" ${s.checked ? 'checked' : ''}>
-    <span class="tagchip">${s.label}</span>
-    <span class="preview">${escapeHtml(s.lines.filter(l => l.text.trim() !== '').map(l => l.text).join(' / '))}</span>
+    <span class="tagchip">${escapeHtml(s.label)}</span>
+    <span class="preview" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(s.lines.filter(l => l.text.trim() !== '').map(l => l.text).join(' / '))}</span>
   </label>
 </div>
 `).join('');
@@ -594,6 +653,15 @@ function renderSectionList() {
     });
   });
 }
+
+const selectAllSectionsBtn = document.getElementById('selectAllSectionsBtn');
+if (selectAllSectionsBtn) selectAllSectionsBtn.addEventListener('click', () => selectAllSections(true));
+
+const deselectAllSectionsBtn = document.getElementById('deselectAllSectionsBtn');
+if (deselectAllSectionsBtn) deselectAllSectionsBtn.addEventListener('click', () => selectAllSections(false));
+
+const resetSectionOrderBtn = document.getElementById('resetSectionOrderBtn');
+if (resetSectionOrderBtn) resetSectionOrderBtn.addEventListener('click', () => resetSectionOrder());
 
 document.getElementById('closeEditor').addEventListener('click', closeEditor);
 document.getElementById('cancelEditor').addEventListener('click', closeEditor);
@@ -690,6 +758,8 @@ function renderCart() {
   if (exportWordBtn) exportWordBtn.disabled = !hasSongs;
   const exportPro6Btn = document.getElementById('exportPro6Btn');
   if (exportPro6Btn) exportPro6Btn.disabled = !hasSongs;
+  const exportProPlaylistBtn = document.getElementById('exportProPlaylistBtn');
+  if (exportProPlaylistBtn) exportProPlaylistBtn.disabled = !hasSongs;
 
   let songNum = 0;
   wrap.innerHTML = state.cart.map((item, idx) => {
@@ -937,14 +1007,14 @@ document.getElementById('exportBtn').addEventListener('click', async () => {
         doc.setDrawColor(37, 71, 168);
         doc.setLineWidth(1);
         doc.line(colX(), y, colX() + colWidth, y);
-        
+
         doc.setFont('times', 'bold');
         doc.setFontSize(11);
         doc.setTextColor(37, 71, 168);
         const breakText = (item.label || 'Sesi Baru').toUpperCase();
         doc.text(breakText, colX(), y + 13);
         doc.setTextColor(0, 0, 0);
-        
+
         doc.line(colX(), y + 20, colX() + colWidth, y + 20);
         y += 30;
         return;
@@ -1035,7 +1105,7 @@ document.getElementById('exportWordBtn').addEventListener('click', async () => {
 
       songNum++;
       const titleText = `${songNum}. ${item.title.toUpperCase()}`;
-      
+
       contentHtml += `<div style="margin-top: 12pt; margin-bottom: 10pt; page-break-inside: avoid; break-inside: avoid-column;">`;
       contentHtml += `<h3 style="font-family: 'Times New Roman', Times, serif; font-size: 13pt; font-weight: bold; margin: 0 0 6pt 0; text-transform: uppercase;">${escapeHtml(titleText)}</h3>`;
 
@@ -1128,7 +1198,7 @@ document.getElementById('exportWordBtn').addEventListener('click', async () => {
     `;
 
     const blob = new Blob(['\ufeff' + docHtml], { type: 'application/msword;charset=utf-8' });
-    
+
     let wordName = `Daftar Pujian_${eventName}`;
     if (eventDate) {
       wordName += `_${eventDate}`;
@@ -1405,6 +1475,107 @@ document.getElementById('exportPro6Btn').addEventListener('click', async () => {
   }
 });
 
+/* ============================= EXPORT PROPRESENTER 7 (.proplaylist) ============================= */
+const exportProPlaylistBtn = document.getElementById('exportProPlaylistBtn');
+const placeholderModal = document.getElementById('placeholderModal');
+const placeholderSongList = document.getElementById('placeholderSongList');
+const closePlaceholderModal = document.getElementById('closePlaceholderModal');
+const cancelPlaceholderBtn = document.getElementById('cancelPlaceholderBtn');
+const downloadPlaceholderSongBtn = document.getElementById('downloadPlaceholderSongBtn');
+const confirmDownloadProPlaylistBtn = document.getElementById('confirmDownloadProPlaylistBtn');
+
+async function triggerProPlaylistDownload() {
+  if (typeof ProPlaylistGenerator === 'undefined') {
+    showToast('Gagal memuat generator ProPlaylist.');
+    return;
+  }
+
+  const eventName = getEventName();
+  const eventDate = document.getElementById('eventDate').value;
+
+  showToast('📌 Disclaimer: Export playlist tidak menyertakan data arrangement.');
+
+  try {
+    const filename = ProPlaylistGenerator.formatFilename(eventName, eventDate);
+    let blob;
+    if (typeof ProPlaylistGenerator.generateZipBundle === 'function') {
+      blob = await ProPlaylistGenerator.generateZipBundle(eventName, eventDate, state.cart, state.songs, buildPro6Xml);
+    } else if (typeof ProPlaylistGenerator.generateDataBytes === 'function') {
+      const bytes = ProPlaylistGenerator.generateDataBytes(eventName, eventDate, state.cart, state.songs);
+      blob = new Blob([bytes], { type: 'application/octet-stream' });
+    } else {
+      throw new Error('Metode pembuat berkas proplaylist tidak tersedia.');
+    }
+
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+
+    showToast(`File ProPresenter Playlist "${filename}" berhasil diunduh.`);
+  } catch (err) {
+    console.error('Gagal mengekspor .proplaylist:', err);
+    showToast('Gagal membuat file .proplaylist: ' + err.message);
+  }
+}
+
+if (exportProPlaylistBtn) {
+  exportProPlaylistBtn.addEventListener('click', () => {
+    const songItems = state.cart.filter(i => i.type === 'song');
+    if (songItems.length === 0) return;
+
+    if (typeof ProPlaylistGenerator === 'undefined') {
+      triggerProPlaylistDownload();
+      return;
+    }
+
+    const placeholders = ProPlaylistGenerator.detectPlaceholders(state.cart, state.songs);
+
+    if (placeholders.length > 0) {
+      if (placeholderSongList) {
+        placeholderSongList.innerHTML = placeholders.map(p => `<li>${escapeHtml(p.title)}</li>`).join('');
+      }
+      if (placeholderModal) {
+        placeholderModal.classList.remove('hidden');
+      }
+    } else {
+      triggerProPlaylistDownload();
+    }
+  });
+}
+
+function closePlaceholderDialog() {
+  if (placeholderModal) placeholderModal.classList.add('hidden');
+}
+
+if (closePlaceholderModal) closePlaceholderModal.addEventListener('click', closePlaceholderDialog);
+if (cancelPlaceholderBtn) cancelPlaceholderBtn.addEventListener('click', closePlaceholderDialog);
+
+if (confirmDownloadProPlaylistBtn) {
+  confirmDownloadProPlaylistBtn.addEventListener('click', () => {
+    closePlaceholderDialog();
+    triggerProPlaylistDownload();
+  });
+}
+
+if (downloadPlaceholderSongBtn) {
+  downloadPlaceholderSongBtn.addEventListener('click', () => {
+    if (typeof ProPlaylistGenerator === 'undefined') return;
+    const placeholders = ProPlaylistGenerator.detectPlaceholders(state.cart, state.songs);
+    placeholders.forEach(p => {
+      if (p.songRecord) {
+        exportSingleSongPro6(p.songRecord);
+      } else {
+        const dummySong = { title: p.title, sections: p.cartItem.sections || [] };
+        exportSingleSongPro6(dummySong);
+      }
+    });
+  });
+}
+
 /* ============================= MANUAL SONG MANAGEMENT ============================= */
 function convertToSongFormat(rawText) {
   const lines = rawText.replace(/\r/g, '').split('\n');
@@ -1501,6 +1672,7 @@ function openManualSongForEditing(songId) {
     const rawLyrics = reconstructSectionLyrics(sec.lines);
     manualSectionsContainer.appendChild(createManualSectionRow(sec.label, rawLyrics));
   });
+  updateManualSectionReorderButtons();
 
   manualSongModal.classList.remove('hidden');
   manualSongTitle.focus();
@@ -1509,7 +1681,7 @@ function openManualSongForEditing(songId) {
   if (song.isManual) {
     modalTitle.textContent = 'Edit Lagu (user-generated)';
   } else {
-    modalTitle.textContent = 'Salin & Edit Lagu (ke user-generated)';
+    modalTitle.textContent = 'Salin & Edit Lagu';
   }
 }
 
@@ -1533,12 +1705,10 @@ async function deleteManualSong(songId) {
 
   if (!confirm('Apakah Anda yakin ingin menghapus lagu ini secara permanen dari Cloud?')) return;
 
-  showToast('Menghapus lagu dari Cloud...');
+  showSyncLoading('Menghapus Lagu...', 'Menghapus lagu dari cloud database');
   try {
-    if (supabaseClient && song.cloudFilename) {
+    if (song.cloudFilename) {
       await deleteSongFromSupabase(song.cloudFilename);
-    } else if (song.cloudFilename) {
-      await deleteSongFromGithub(song.cloudFilename);
     }
 
     // Remove from memory
@@ -1555,6 +1725,8 @@ async function deleteManualSong(songId) {
   } catch (e) {
     console.error(e);
     alert('Gagal menghapus dari Cloud: ' + e.message + '\n\nAksi dibatalkan.');
+  } finally {
+    hideSyncLoading();
   }
 }
 
@@ -1594,7 +1766,7 @@ function formatLyricsText(text) {
     const trimmed = line.trim();
     if (!trimmed) return '';
     if (trimmed.startsWith('[CHORD]') || trimmed.startsWith('[NOTES]')) return line;
-    
+
     // Replace multiple spaces with single space
     const cleanLine = line.replace(/[ \t]+/g, ' ');
     const words = cleanLine.split(' ');
@@ -1649,27 +1821,61 @@ if (autoCleanLyricsBtn) {
   });
 }
 
+function updateManualSectionReorderButtons() {
+  const rows = Array.from(manualSectionsContainer.querySelectorAll('.manual-section-row'));
+  rows.forEach((row, idx) => {
+    const upBtn = row.querySelector('.btn-move-up-section');
+    const downBtn = row.querySelector('.btn-move-down-section');
+    if (upBtn) upBtn.disabled = (idx === 0);
+    if (downBtn) downBtn.disabled = (idx === rows.length - 1);
+  });
+}
+
 // Create a new empty section row
 function createManualSectionRow(labelVal = '', lyricsVal = '') {
   const row = document.createElement('div');
   row.className = 'manual-section-row';
-  row.style.cssText = 'border: 1px solid var(--border-color); padding: 12px; border-radius: var(--radius); background: #131d31; display: flex; flex-direction: column; gap: 8px; position: relative;';
+  row.style.cssText = 'border: 1px solid var(--border-color); padding: 12px; border-radius: var(--radius); background: #131d31; display: flex; flex-direction: column; gap: 8px; position: relative; transition: all 0.15s ease;';
 
   row.innerHTML = `
-    <button class="btn-remove-section" style="position: absolute; top: 8px; right: 8px; background: none; border: none; color: #ef4444; cursor: pointer; font-size: 14px; padding: 4px;">✕</button>
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span class="handle" style="cursor: grab; color: #64748b; font-family: monospace; letter-spacing: 2px;" title="Seret untuk mengubah urutan">⠿⠿</span>
+        <div class="sec-reorder-btns" style="display: flex; flex-direction: row; gap: 3px;">
+          <button type="button" class="icon-btn btn-move-up-section" style="padding: 2px 7px; font-size: 10px;" title="Naikkan section">▲</button>
+          <button type="button" class="icon-btn btn-move-down-section" style="padding: 2px 7px; font-size: 10px;" title="Turunkan section">▼</button>
+        </div>
+      </div>
+      <button type="button" class="btn-remove-section" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 14px; padding: 4px;" title="Hapus section">✕</button>
+    </div>
     <div style="display: flex; flex-direction: column; gap: 4px;">
       <label style="font-size: 11px; font-weight: 600; color: var(--text-muted);">Section</label>
-      <input type="text" class="manual-section-label" placeholder="Contoh: Bait 1, Reff, Bridge..." value="${labelVal}"
+      <input type="text" class="manual-section-label" placeholder="Contoh: Bait 1, Reff, Bridge..." value="${escapeHtml(labelVal)}"
         style="width: 100%; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: var(--radius); font-family: 'Inter', sans-serif; font-size: 13px; background: var(--bg-card); outline: none; color: #ffffff;">
     </div>
     <div style="display: flex; flex-direction: column; gap: 4px;">
       <label style="font-size: 11px; font-weight: 600; color: var(--text-muted);">Lirik</label>
       <textarea class="manual-section-lyrics" placeholder="Ketik lirik atau chord..."
-        style="width: 100%; min-height: 80px; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: var(--radius); font-family: 'Roboto Mono', monospace; font-size: 12px; background: var(--bg-card); outline: none; resize: vertical; line-height: 1.4; color: #ffffff;">${lyricsVal}</textarea>
+        style="width: 100%; min-height: 80px; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: var(--radius); font-family: 'Roboto Mono', monospace; font-size: 12px; background: var(--bg-card); outline: none; resize: vertical; line-height: 1.4; color: #ffffff;">${escapeHtml(lyricsVal)}</textarea>
     </div>
   `;
 
-  // Handle delete section click
+  row.querySelector('.btn-move-up-section').addEventListener('click', () => {
+    const prev = row.previousElementSibling;
+    if (prev && prev.classList.contains('manual-section-row')) {
+      manualSectionsContainer.insertBefore(row, prev);
+      updateManualSectionReorderButtons();
+    }
+  });
+
+  row.querySelector('.btn-move-down-section').addEventListener('click', () => {
+    const next = row.nextElementSibling;
+    if (next && next.classList.contains('manual-section-row')) {
+      manualSectionsContainer.insertBefore(row, next.nextElementSibling);
+      updateManualSectionReorderButtons();
+    }
+  });
+
   row.querySelector('.btn-remove-section').addEventListener('click', () => {
     const rowsCount = manualSectionsContainer.querySelectorAll('.manual-section-row').length;
     if (rowsCount <= 1) {
@@ -1677,6 +1883,7 @@ function createManualSectionRow(labelVal = '', lyricsVal = '') {
       return;
     }
     row.remove();
+    updateManualSectionReorderButtons();
   });
 
   return row;
@@ -1688,6 +1895,7 @@ openManualSongBtn.addEventListener('click', () => {
     manualSongTitle.value = '';
     manualSectionsContainer.innerHTML = '';
     manualSectionsContainer.appendChild(createManualSectionRow());
+    updateManualSectionReorderButtons();
     manualSongModal.classList.remove('hidden');
     manualSongTitle.focus();
     manualSongModal.querySelector('h2').textContent = 'Tambah Lagu Baru';
@@ -1696,6 +1904,7 @@ openManualSongBtn.addEventListener('click', () => {
 
 addManualSectionBtn.addEventListener('click', () => {
   manualSectionsContainer.appendChild(createManualSectionRow());
+  updateManualSectionReorderButtons();
   // Scroll container to bottom
   const body = manualSongModal.querySelector('.ebody');
   body.scrollTop = body.scrollHeight;
@@ -1802,15 +2011,12 @@ saveManualSong.addEventListener('click', () => {
     saveManualSong.disabled = true;
     saveManualSong.textContent = 'Menyimpan...';
 
+    showSyncLoading(isEditing ? 'Memperbarui Teks Lagu...' : 'Menyimpan Lagu Baru...', 'Menyimpan perubahan ke cloud database');
+
     try {
       const fullRawText = `title: ${title}\n\n` + rawTextParts.join('\n');
-      
-      let cloudFilename = null;
-      if (supabaseClient) {
-        cloudFilename = await saveSongToSupabase(songRecord.title, fullRawText, state.editingManualSong.cloudFilename, songRecord.groups);
-      } else {
-        cloudFilename = await uploadSongToGithub(songRecord, fullRawText, state.editingManualSong.cloudFilename);
-      }
+
+      const cloudFilename = await saveSongToSupabase(songRecord.title, fullRawText, state.editingManualSong.cloudFilename, songRecord.groups);
       songRecord.cloudFilename = cloudFilename;
 
       // Update local state memory
@@ -1854,19 +2060,14 @@ saveManualSong.addEventListener('click', () => {
       console.error(e);
       alert('Gagal menyimpan lagu: ' + e.message + '\n\nAksi dibatalkan.');
     } finally {
+      hideSyncLoading();
       saveManualSong.disabled = false;
       saveManualSong.textContent = 'Simpan Lagu';
     }
   });
 });
 
-/* ============================= GITHUB CLOUD SINKRONISASI ============================= */
-const DEFAULT_GITHUB_REPO = 'blessedcotw/SongRepo_userdata';
-const DEFAULT_GITHUB_BRANCH = 'main';
-const WORKER_BASE_URL = 'https://songrepo-userdata.mm-cotw.workers.dev';
-
-// Hash password admin yang di-cache selama sesi (tidak pernah menyimpan password asli)
-// Verifikasi kebenaran hash dilakukan oleh Cloudflare Worker, bukan di sini
+/* ============================= SUPABASE CLOUD SINKRONISASI & AUTH ============================= */
 let adminHashCache = null;
 
 async function hashPassword(password) {
@@ -1879,24 +2080,23 @@ async function hashPassword(password) {
 
 function handleWorkerAuthError() {
   sessionStorage.removeItem('song_repo_is_admin');
+  sessionStorage.removeItem('song_repo_admin_hash');
   adminHashCache = null;
   showToast('Sesi admin berakhir atau password salah. Silakan coba lagi.');
 }
 
 /**
- * Tampilkan modal password, verifikasi ke worker, dan kembalikan true/false.
- * Modal tetap terbuka selama verifikasi — error tampil inline dengan animasi shake.
- * User bisa retry tanpa menutup/membuka ulang modal.
+ * Tampilkan modal password, verifikasi via Supabase Auth, dan kembalikan true/false.
  */
 function promptAndVerifyAdmin(messageText) {
   return new Promise((resolve) => {
     const modal = document.getElementById('passwordModal');
-    const card  = document.getElementById('passwordModalCard');
+    const card = document.getElementById('passwordModalCard');
     const promptText = document.getElementById('passwordPromptText');
-    const input  = document.getElementById('adminPasswordInput');
-    const errEl  = document.getElementById('passwordError');
+    const input = document.getElementById('adminPasswordInput');
+    const errEl = document.getElementById('passwordError');
     const confirmBtn = document.getElementById('confirmPasswordBtn');
-    const cancelBtn  = document.getElementById('cancelPasswordBtn');
+    const cancelBtn = document.getElementById('cancelPasswordBtn');
     const iconEl = document.getElementById('passwordModalIcon');
 
     // Reset state
@@ -1954,6 +2154,9 @@ function promptAndVerifyAdmin(messageText) {
       setLoading(true);
       const hash = await hashPassword(pwd);
       try {
+<<<<<<< HEAD
+        if (!supabaseClient) {
+=======
         const res = await fetch(`${WORKER_BASE_URL}/auth/verify`, {
           method: 'POST',
           headers: { 'X-Admin-Hash': hash }
@@ -1980,15 +2183,32 @@ function promptAndVerifyAdmin(messageText) {
           cleanup();
           resolve(true);
         } else if (res.status === 403) {
+>>>>>>> f54893a383406e0d1b7cb62eab0c42995ba8e83d
           setLoading(false);
-          showError('Kata sandi salah. Coba lagi.');
-        } else {
-          setLoading(false);
-          showError('Gagal terhubung ke server (status ' + res.status + ').');
+          showError('Database client belum terkonfigurasi.');
+          return;
         }
+        const { data: supaData, error: supaErr } = await supabaseClient.auth.signInWithPassword({
+          email: 'mm.cotw@gmail.com',
+          password: pwd
+        });
+        if (supaErr) {
+          setLoading(false);
+          showError('Kata sandi salah atau autentikasi gagal: ' + supaErr.message);
+          return;
+        }
+
+        adminHashCache = hash;
+        sessionStorage.setItem('song_repo_is_admin', 'true');
+        sessionStorage.setItem('song_repo_admin_hash', hash);
+        console.log('✅ Sesi Database Auth berhasil diaktifkan.');
+
+        iconEl.textContent = '✅';
+        cleanup();
+        resolve(true);
       } catch (e) {
         setLoading(false);
-        showError('Tidak dapat terhubung ke server. Periksa koneksi internet.');
+        showError('Gagal autentikasi Admin: ' + e.message);
       }
     }
 
@@ -2010,7 +2230,6 @@ function promptAndVerifyAdmin(messageText) {
 }
 
 async function checkAdminAuth(callback) {
-  // Jika hash sudah di-cache di sesi ini, langsung lanjut
   if (sessionStorage.getItem('song_repo_is_admin') === 'true' && adminHashCache) {
     callback();
     return;
@@ -2019,20 +2238,14 @@ async function checkAdminAuth(callback) {
   if (ok) callback();
 }
 
-function getGithubRepo() {
-  return localStorage.getItem('song_repo_github_repo') || DEFAULT_GITHUB_REPO;
-}
 function getAdminHash() {
   if (adminHashCache) return adminHashCache;
-  const stored = localStorage.getItem('song_repo_admin_hash') || sessionStorage.getItem('song_repo_admin_hash');
+  const stored = sessionStorage.getItem('song_repo_admin_hash');
   if (stored) {
     adminHashCache = stored;
     return stored;
   }
   return null;
-}
-function getGithubBranch() {
-  return localStorage.getItem('song_repo_github_branch') || DEFAULT_GITHUB_BRANCH;
 }
 
 async function saveSongToSupabase(title, fullRawText, existingFilename = null, groups = []) {
@@ -2048,8 +2261,6 @@ async function saveSongToSupabase(title, fullRawText, existingFilename = null, g
   }
   const category = groups.includes('chord') ? 'chord' : (groups.includes('animasi') ? 'animasi' : 'manual');
 
-  // Web App selalu menyimpan lagu buatan/editan user ke tabel `user_songs`
-  // Tabel `songs` dikhususkan eksklusif untuk sinkronisasi otomatis dari skrip Python ProPresenter 7
   const payload = {
     title: title,
     category: category,
@@ -2071,192 +2282,8 @@ async function saveSongToSupabase(title, fullRawText, existingFilename = null, g
   return filename;
 }
 
-async function uploadSongToGithub(songRecord, processedText, existingFilename = null) {
-  const adminHash = getAdminHash();
-  const repo = getGithubRepo();
-  const branch = getGithubBranch();
-  if (!adminHash || !repo) return null;
-
-  // Header untuk worker: X-Admin-Hash membuktikan kamu adalah admin
-  // Token GitHub TIDAK ada di sini — disimpan di Cloudflare Worker
-  const writeHeaders = {
-    'Content-Type': 'application/json',
-    'X-Admin-Hash': adminHash
-  };
-  // Header untuk GET request (tidak perlu auth)
-  const readHeaders = { 'Content-Type': 'application/json' };
-
-  const sanitizedTitle = songRecord.title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/(^_|_$)/g, '');
-  const filename = existingFilename || `manual_${sanitizedTitle}.txt`;
-  const songPath = `library/${filename}`;
-  const songContentB64 = btoa(unescape(encodeURIComponent(processedText)));
-
-  let fileSha = null;
-  if (existingFilename) {
-    try {
-      const fileRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/${songPath}?ref=${branch}`, { headers: readHeaders });
-      if (fileRes.ok) {
-        const fileData = await fileRes.json();
-        fileSha = fileData.sha;
-      }
-    } catch (e) {
-      console.warn('Gagal mendapatkan SHA file yang ada:', e);
-    }
-  }
-
-  const uploadSongRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/${songPath}`, {
-    method: 'PUT',
-    headers: writeHeaders,
-    body: JSON.stringify({
-      message: existingFilename ? `Update manual song: ${songRecord.title}` : `Add manual song: ${songRecord.title}`,
-      content: songContentB64,
-      sha: fileSha || undefined,
-      branch
-    })
-  });
-
-  if (!uploadSongRes.ok) {
-    if (uploadSongRes.status === 403) {
-      throw new Error('Kata sandi admin salah. Akses ditolak oleh server.');
-    }
-    throw new Error(`Gagal mengunggah file lagu: ${uploadSongRes.statusText}`);
-  }
-
-  if (!existingFilename) {
-    let manifestSha = null;
-    let manifestList = [];
-    try {
-      const manifestRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/library-manifest.json?ref=${branch}`, { headers: readHeaders });
-      if (manifestRes.ok) {
-        const manifestData = await manifestRes.json();
-        manifestSha = manifestData.sha;
-        const rawText = atob(manifestData.content);
-        manifestList = JSON.parse(rawText);
-      }
-    } catch (e) {
-      console.log('Manifest belum ada, akan membuat baru.');
-    }
-
-    if (!manifestList.includes(filename)) {
-      manifestList.push(filename);
-    }
-
-    const manifestContentB64 = btoa(JSON.stringify(manifestList, null, 2));
-    const updateManifestRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/library-manifest.json`, {
-      method: 'PUT',
-      headers: writeHeaders,
-      body: JSON.stringify({
-        message: `Update manifest for: ${songRecord.title}`,
-        content: manifestContentB64,
-        sha: manifestSha || undefined,
-        branch
-      })
-    });
-
-    if (!updateManifestRes.ok) {
-      if (updateManifestRes.status === 403) {
-        throw new Error('Kata sandi admin salah. Akses ditolak oleh server.');
-      }
-      throw new Error(`Gagal memperbarui manifest: ${updateManifestRes.statusText}`);
-    }
-  }
-
-  return filename;
-}
-
-async function deleteSongFromGithub(filename) {
-  const adminHash = getAdminHash();
-  const repo = getGithubRepo();
-  const branch = getGithubBranch();
-  if (!adminHash || !repo) return;
-
-  const writeHeaders = {
-    'Content-Type': 'application/json',
-    'X-Admin-Hash': adminHash
-  };
-  const readHeaders = { 'Content-Type': 'application/json' };
-
-  let fileSha = null;
-  try {
-    const fileRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/${filename}?ref=${branch}`, { headers: readHeaders });
-    if (fileRes.ok) {
-      const fileData = await fileRes.json();
-      fileSha = fileData.sha;
-    }
-  } catch (e) {
-    console.warn('Gagal mendapatkan SHA file:', e);
-  }
-
-  if (fileSha) {
-    const deleteRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/${filename}`, {
-      method: 'DELETE',
-      headers: writeHeaders,
-      body: JSON.stringify({
-        message: `Delete manual song: ${filename}`,
-        sha: fileSha,
-        branch
-      })
-    });
-    if (!deleteRes.ok) {
-      if (deleteRes.status === 403) {
-        throw new Error('Kata sandi admin salah. Akses ditolak oleh server.');
-      }
-      throw new Error(`Gagal menghapus file dari GitHub (status: ${deleteRes.status})`);
-    }
-  } else {
-    console.log(`File ${filename} tidak ditemukan di GitHub, lanjut membersihkan manifest.`);
-  }
-
-  const manifestRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/library-manifest.json?ref=${branch}`, { headers: readHeaders });
-  if (!manifestRes.ok) {
-    throw new Error(`Gagal mengambil manifest dari GitHub (status: ${manifestRes.status})`);
-  }
-
-  const manifestData = await manifestRes.json();
-  const rawText = atob(manifestData.content);
-  let manifestList = JSON.parse(rawText);
-  manifestList = manifestList.filter(f => f !== filename);
-
-  const updateManifestRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/library-manifest.json`, {
-    method: 'PUT',
-    headers: writeHeaders,
-    body: JSON.stringify({
-      message: `Remove from manifest: ${filename}`,
-      content: btoa(JSON.stringify(manifestList, null, 2)),
-      sha: manifestData.sha,
-      branch
-    })
-  });
-
-  if (!updateManifestRes.ok) {
-    if (updateManifestRes.status === 403) {
-      throw new Error('Kata sandi admin salah. Akses ditolak oleh server.');
-    }
-    throw new Error(`Gagal memperbarui manifest di GitHub (status: ${updateManifestRes.status})`);
-  }
-}
-
-async function purgeJsDelivrCache(repo, branch, path) {
-  try {
-    const url = `https://purge.jsdelivr.net/gh/${repo}@${branch}/${path}`;
-    const res = await fetch(url, { method: 'POST' });
-    if (res.ok) {
-      const data = await res.json();
-      console.log(`jsDelivr cache purged for ${path}:`, data);
-    } else {
-      // If POST fails, try GET as fallback
-      await fetch(url, { method: 'GET' });
-    }
-  } catch (e) {
-    console.warn(`Error purging jsDelivr cache untuk ${path}:`, e);
-  }
-}
-
-async function loadFromSupabase() {
-  if (!supabaseClient) return null;
+async function loadCloudSongs() {
+  if (!supabaseClient) return [];
   try {
     let allData = [];
     let from = 0;
@@ -2307,10 +2334,13 @@ async function loadFromSupabase() {
     }
 
     if (allData.length > 0) {
-      console.log(`⚡ Successfully loaded ALL ${allData.length} songs from Supabase (songs + user_songs)!`);
+      console.log(`⚡ Berhasil memuat ${allData.length} lagu dari Database (songs + user_songs)!`);
       const songs = allData.map(item => {
         const song = buildSongRecord(item.filename, item.content);
         song.cloudFilename = item.filename;
+        song.uuid = item.uuid || null;
+        song.arrangement_uuid = item.arrangement_uuid || item.uuid || null;
+        song.file_path = item.file_path || null;
         if (item._isUserSongTable || item.category === 'manual' || (item.filename && item.filename.includes('manual'))) {
           song.isManual = true;
           song.groups = song.groups.filter(g => g !== 'lagu');
@@ -2323,7 +2353,14 @@ async function loadFromSupabase() {
       try {
         const cacheData = {
           timestamp: Date.now(),
-          songs: allData.map(item => ({ filename: item.filename, content: item.content, category: item.category }))
+          songs: allData.map(item => ({
+            filename: item.filename,
+            content: item.content,
+            category: item.category,
+            uuid: item.uuid || null,
+            arrangement_uuid: item.arrangement_uuid || null,
+            file_path: item.file_path || null
+          }))
         };
         await setCache('supabase_local_songs', cacheData);
       } catch (e) {
@@ -2333,165 +2370,18 @@ async function loadFromSupabase() {
       return songs;
     }
   } catch (e) {
-    console.warn('Gagal memuat lagu dari Supabase:', e);
+    console.warn('Gagal memuat lagu dari Database:', e);
   }
-  return null;
-}
-
-async function loadCloudSongs() {
-  // 0. Coba muat lagu dari Supabase terlebih dahulu (Utama)
-  const supabaseSongs = await loadFromSupabase();
-  if (supabaseSongs && supabaseSongs.length > 0) {
-    return supabaseSongs;
-  }
-
-  const repo = getGithubRepo();
-  const branch = getGithubBranch();
-  if (!repo) return [];
-
-  const readHeaders = { 'Content-Type': 'application/json' };
-
-  // 1. Coba unduh 1 file bundle tunggal (library-bundle.json) untuk 1-request super fast load (Fallback 1)
-  try {
-    const bundleRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/library-bundle.json?ref=${branch}`, { headers: readHeaders });
-    if (bundleRes.ok) {
-      const bundleData = await bundleRes.json();
-      const rawText = decodeURIComponent(escape(atob(bundleData.content.replace(/\s/g, ''))));
-      const parsedBundle = JSON.parse(rawText);
-
-      if (parsedBundle && Array.isArray(parsedBundle.songs)) {
-        const cloudCache = {
-          timestamp: Date.now(),
-          files: {}
-        };
-
-        const results = parsedBundle.songs.map(item => {
-          cloudCache.files[item.filename] = item.text;
-          const song = buildSongRecord(item.filename, item.text);
-          song.cloudFilename = item.filename;
-          return song;
-        });
-
-        await setCache('cloud_files_cache', cloudCache);
-        return results;
-      }
-    }
-  } catch (e) {
-    console.warn('Bundle cloud belum ada atau gagal dimuat, menggunakan fallback:', e);
-  }
-
-  // 2. Fallback jika library-bundle.json belum dibuat di repository
-  try {
-    const manifestRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/library-manifest.json?ref=${branch}`, { headers: readHeaders });
-    if (!manifestRes.ok) {
-      if (manifestRes.status === 404) {
-        return [];
-      }
-      throw new Error(`Gagal memuat manifest dari Worker (status: ${manifestRes.status})`);
-    }
-    const manifestData = await manifestRes.json();
-    const rawText = atob(manifestData.content);
-    const filenames = JSON.parse(rawText);
-
-    if (!Array.isArray(filenames) || filenames.length === 0) return [];
-
-    // Baca cache cloud dari IndexedDB
-    let cloudCache = await getCache('cloud_files_cache') || { timestamp: 0, files: {} };
-    if (!cloudCache.files) cloudCache.files = {};
-
-    const results = [];
-    const missingFilenames = [];
-
-    // 1. Cek file mana yang sudah ada di IndexedDB lokal & bersihkan file yang sudah dihapus di cloud
-    Object.keys(cloudCache.files).forEach(fn => {
-      if (!filenames.includes(fn)) {
-        delete cloudCache.files[fn];
-      }
-    });
-
-    for (const fname of filenames) {
-      if (cloudCache.files[fname]) {
-        const song = buildSongRecord(fname, cloudCache.files[fname]);
-        song.cloudFilename = fname;
-        results.push(song);
-      } else {
-        missingFilenames.push(fname);
-      }
-    }
-
-    // 2. Jika ada file baru yang belum ada di IndexedDB, unduh secara paralel via Worker
-    if (missingFilenames.length > 0) {
-      const batchPromises = missingFilenames.map(async (fname) => {
-        try {
-          const fileRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/library/${fname}?ref=${branch}`, { headers: readHeaders });
-          if (!fileRes.ok) throw new Error(`Status: ${fileRes.status}`);
-          const fileData = await fileRes.json();
-          const text = decodeURIComponent(escape(atob(fileData.content.replace(/\s/g, ''))));
-          
-          cloudCache.files[fname] = text;
-          const song = buildSongRecord(fname, text);
-          song.cloudFilename = fname;
-          return song;
-        } catch (e) {
-          console.warn('Gagal memuat lagu cloud:', fname, e);
-          return null;
-        }
-      });
-
-      const fetchedSongs = await Promise.all(batchPromises);
-      for (const song of fetchedSongs) {
-        if (song) results.push(song);
-      }
-
-      // Simpan pembaruan cache cloud ke IndexedDB
-      cloudCache.timestamp = Date.now();
-      await setCache('cloud_files_cache', cloudCache);
-    }
-
-    return results;
-  } catch (e) {
-    console.warn('Gagal memuat data dari GitHub Cloud via Worker:', e);
-    return [];
-  }
-}
-
-async function syncCloudSongs() {
-  const repo = getGithubRepo();
-  if (!repo) return;
-
-  const statusEl = document.getElementById('scanStatus');
-  const oldText = statusEl.textContent;
-  statusEl.textContent = 'Menghubungkan ke GitHub Cloud...';
-
-  try {
-    const cloudSongs = await loadCloudSongs();
-    if (cloudSongs.length > 0) {
-      const existingTitles = new Map();
-      state.songs.forEach((s, idx) => existingTitles.set(s.title.toLowerCase().trim(), idx));
-
-      cloudSongs.forEach(s => {
-        const key = s.title.toLowerCase().trim();
-        if (existingTitles.has(key)) {
-          const idx = existingTitles.get(key);
-          state.songs[idx] = s;
-        } else {
-          state.songs.push(s);
-        }
-      });
-      renderSongList();
-      renderTabCounts();
-    }
-    statusEl.textContent = `${state.songs.length} lagu dimuat (Cloud terhubung)`;
-  } catch (e) {
-    console.warn('Gagal menyinkronkan cloud:', e);
-    statusEl.textContent = oldText;
-  }
+  return [];
 }
 
 /* ============================= INIT ============================= */
 setupPointerDrag(document.getElementById('sectionList'), (newOrder) => {
   state.editing.working = newOrder.map(idx => state.editing.working[idx]);
   renderSectionList();
+});
+setupPointerDrag(document.getElementById('manualSectionsContainer'), () => {
+  updateManualSectionReorderButtons();
 });
 setupPointerDrag(document.getElementById('cartList'), (newOrder) => {
   state.cart = newOrder.map(idx => state.cart[idx]);
@@ -2503,7 +2393,7 @@ scanLibrary();
 renderCart();
 renderPreview();
 
-/* ============================= SONGLIST CLOUD MANAGEMENT ============================= */
+/* ============================= PLAYLIST CLOUD MANAGEMENT ============================= */
 async function ensureAdminHash() {
   let hash = getAdminHash();
   if (!hash) {
@@ -2514,35 +2404,35 @@ async function ensureAdminHash() {
   return hash;
 }
 
-async function uploadSonglistToSupabase(songlistData) {
-  if (!supabaseClient) return null;
-  const sanitizedEvent = (songlistData.eventName || 'ibadah')
+async function savePlaylistToSupabase(playlistData) {
+  if (!supabaseClient) throw new Error('Database belum terkonfigurasi.');
+  const sanitizedEvent = (playlistData.eventName || 'ibadah')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/(^_|_$)/g, '');
-  const dateStr = songlistData.eventDate || new Date().toISOString().slice(0, 10);
-  const filename = `songlist_${dateStr}_${sanitizedEvent}_${songlistData.id.slice(0, 6)}.json`;
+  const dateStr = playlistData.eventDate || new Date().toISOString().slice(0, 10);
+  const filename = `playlist_${dateStr}_${sanitizedEvent}_${playlistData.id.slice(0, 6)}.json`;
 
-  const { data, error } = await supabaseClient
+  const { error } = await supabaseClient
     .from('songlists')
     .upsert({
-      event_name: songlistData.eventName,
-      event_date: songlistData.eventDate || null,
-      author: songlistData.author || 'Anonim',
+      event_name: playlistData.eventName,
+      event_date: playlistData.eventDate || null,
+      author: playlistData.author || 'Anonim',
       filename: filename,
-      cart_data: songlistData.cart || [],
+      cart_data: playlistData.cart || [],
       updated_at: new Date().toISOString()
     }, { onConflict: 'filename' });
 
   if (error) {
-    console.error('Gagal menyimpan songlist ke Database:', error);
-    throw new Error('Gagal menyimpan songlist ke Database: ' + error.message);
+    console.error('Gagal menyimpan playlist ke Database:', error);
+    throw new Error('Gagal menyimpan playlist ke Database: ' + error.message);
   }
 
   return filename;
 }
 
-async function loadSupabaseSonglists() {
+async function loadCloudPlaylists() {
   if (!supabaseClient) return [];
   try {
     const { data, error } = await supabaseClient
@@ -2551,7 +2441,7 @@ async function loadSupabaseSonglists() {
       .order('updated_at', { ascending: false });
 
     if (error) {
-      console.warn('Gagal memuat songlists dari Database:', error);
+      console.warn('Gagal memuat playlist dari Database:', error);
       return [];
     }
 
@@ -2567,327 +2457,177 @@ async function loadSupabaseSonglists() {
       }));
     }
   } catch (e) {
-    console.warn('Gagal memuat songlists dari Database:', e);
+    console.warn('Gagal memuat playlist dari Database:', e);
   }
   return [];
 }
 
-async function deleteSonglistFromSupabase(filename) {
-  if (!supabaseClient) return false;
+async function deletePlaylistFromSupabase(filename) {
+  if (!supabaseClient) throw new Error('Database belum terkonfigurasi.');
   const { error } = await supabaseClient
     .from('songlists')
     .delete()
     .eq('filename', filename);
 
   if (error) {
-    console.error('Gagal menghapus songlist dari Database:', error);
-    throw new Error('Gagal menghapus songlist dari Database: ' + error.message);
+    console.error('Gagal menghapus playlist dari Database:', error);
+    throw new Error('Gagal menghapus playlist dari Database: ' + error.message);
   }
   return true;
 }
 
-async function uploadSonglistToGithub(songlistData) {
-  if (supabaseClient) {
+// UI Event Listeners for Playlist Cloud Sync
+const savePlaylistBtn = document.getElementById('savePlaylistBtn');
+if (savePlaylistBtn) {
+  savePlaylistBtn.addEventListener('click', async () => {
+    if (state.cart.length === 0) {
+      showToast('Playlist masih kosong.');
+      return;
+    }
+
+    const lastAuthor = localStorage.getItem('song_repo_last_author') || '';
+    const authorInput = prompt('Masukkan nama Anda sebagai pembuat playlist (Author):', lastAuthor);
+    if (authorInput === null) return;
+    const authorName = authorInput.trim() || 'Anonim';
+    localStorage.setItem('song_repo_last_author', authorName);
+
+    const originalText = savePlaylistBtn.textContent;
+    savePlaylistBtn.disabled = true;
+    savePlaylistBtn.textContent = 'Menyimpan...';
+
+    showSyncLoading('Menyimpan Playlist...', 'Menyimpan playlist ke cloud database');
+
     try {
-      const supaFilename = await uploadSonglistToSupabase(songlistData);
-      if (supaFilename) return supaFilename;
+      const eventName = getEventName();
+      const eventDateVal = document.getElementById('eventDate').value;
+      const playlistData = {
+        id: uid(),
+        eventName: eventName,
+        eventDate: eventDateVal,
+        author: authorName,
+        updatedAt: new Date().toISOString(),
+        cart: state.cart
+      };
+
+      await savePlaylistToSupabase(playlistData);
+      showToast(`Playlist "${eventName}" (${authorName}) berhasil disimpan ke Cloud.`);
     } catch (e) {
-      console.warn('Gagal menyimpan songlist ke Supabase, fallback ke GitHub:', e);
+      console.error(e);
+      showToast('Gagal menyimpan playlist: ' + e.message);
+    } finally {
+      hideSyncLoading();
+      savePlaylistBtn.disabled = false;
+      savePlaylistBtn.textContent = originalText;
     }
-  }
-
-  const adminHash = await ensureAdminHash();
-  const repo = getGithubRepo();
-  const branch = getGithubBranch();
-  if (!repo) return null;
-
-  const writeHeaders = {
-    'Content-Type': 'application/json',
-    'X-Admin-Hash': adminHash
-  };
-  const readHeaders = { 'Content-Type': 'application/json' };
-
-  const sanitizedEvent = (songlistData.eventName || 'ibadah')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/(^_|_$)/g, '');
-  const dateStr = songlistData.eventDate || new Date().toISOString().slice(0, 10);
-  const filename = `songlist_${dateStr}_${sanitizedEvent}_${songlistData.id.slice(0, 6)}.json`;
-  const filePath = `songlists/${filename}`;
-  const jsonContent = JSON.stringify(songlistData, null, 2);
-  const b64Content = utf8ToBase64(jsonContent);
-
-  let fileSha = null;
-  try {
-    const fileRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/${filePath}?ref=${branch}`, { headers: readHeaders });
-    if (fileRes.ok) {
-      const fileData = await fileRes.json();
-      fileSha = fileData.sha;
-    }
-  } catch (e) {}
-
-  const uploadRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/${filePath}`, {
-    method: 'PUT',
-    headers: writeHeaders,
-    body: JSON.stringify({
-      message: `Save songlist: ${songlistData.eventName} (${dateStr}) by ${songlistData.author || 'Anonim'}`,
-      content: b64Content,
-      sha: fileSha || undefined,
-      branch
-    })
   });
-
-  if (!uploadRes.ok) {
-    if (uploadRes.status === 403) {
-      throw new Error('Kata sandi admin tidak valid. Akses ditolak oleh server.');
-    }
-    throw new Error(`Gagal menyimpan file songlist: ${uploadRes.statusText}`);
-  }
-
-  return filename;
 }
 
-async function loadCloudSonglists() {
-  if (supabaseClient) {
-    const supaSonglists = await loadSupabaseSonglists();
-    if (supaSonglists && supaSonglists.length > 0) {
-      return supaSonglists;
-    }
-  }
+const playlistModal = document.getElementById('playlistModal');
+const closePlaylistModal = document.getElementById('closePlaylistModal');
+const cancelPlaylistModal = document.getElementById('cancelPlaylistModal');
+const savedPlaylistsContainer = document.getElementById('savedPlaylistsContainer');
 
-  const repo = getGithubRepo();
-  const branch = getGithubBranch();
-  if (!repo) return [];
-
-  const readHeaders = { 'Content-Type': 'application/json' };
-
-  try {
-    const manifestRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/songlists/songlists-manifest.json?ref=${branch}`, { headers: readHeaders });
-    if (!manifestRes.ok) {
-      return [];
-    }
-    const manifestData = await manifestRes.json();
-    const rawText = decodeURIComponent(escape(atob(manifestData.content.replace(/\s/g, ''))));
-    const filenames = JSON.parse(rawText);
-
-    if (!Array.isArray(filenames) || filenames.length === 0) return [];
-
-    const songlists = [];
-    for (const fname of filenames) {
-      try {
-        const fileRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/songlists/${fname}?ref=${branch}`, { headers: readHeaders });
-        if (fileRes.ok) {
-          const fileData = await fileRes.json();
-          const jsonText = decodeURIComponent(escape(atob(fileData.content.replace(/\s/g, ''))));
-          const data = JSON.parse(jsonText);
-          data.cloudFilename = fname;
-          songlists.push(data);
-        }
-      } catch (e) {
-        console.warn('Gagal memuat songlist:', fname, e);
-      }
-    }
-
-    songlists.sort((a, b) => new Date(b.updatedAt || b.eventDate) - new Date(a.updatedAt || a.eventDate));
-    return songlists;
-  } catch (e) {
-    console.warn('Gagal memuat songlists dari Cloud:', e);
-    return [];
-  }
+function closePlaylistModalFunc() {
+  if (playlistModal) playlistModal.classList.add('hidden');
 }
 
-async function deleteSonglistFromGithub(filename) {
-  if (supabaseClient) {
+if (closePlaylistModal) closePlaylistModal.addEventListener('click', closePlaylistModalFunc);
+if (cancelPlaylistModal) cancelPlaylistModal.addEventListener('click', closePlaylistModalFunc);
+if (playlistModal) {
+  playlistModal.addEventListener('click', (e) => {
+    if (e.target.id === 'playlistModal') closePlaylistModalFunc();
+  });
+}
+
+const openPlaylistModalBtn = document.getElementById('openPlaylistModalBtn');
+if (openPlaylistModalBtn) {
+  openPlaylistModalBtn.addEventListener('click', async () => {
+    if (savedPlaylistsContainer) {
+      savedPlaylistsContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Memuat playlist tersimpan dari Cloud...</div>';
+    }
+    if (playlistModal) playlistModal.classList.remove('hidden');
+
+    showSyncLoading('Memuat Playlist...', 'Mengambil daftar playlist tersimpan dari database');
+
     try {
-      await deleteSonglistFromSupabase(filename);
-      return;
+      const list = await loadCloudPlaylists();
+      if (list.length === 0) {
+        if (savedPlaylistsContainer) {
+          savedPlaylistsContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada playlist tersimpan di Cloud.</div>';
+        }
+        return;
+      }
+
+      if (savedPlaylistsContainer) {
+        savedPlaylistsContainer.innerHTML = list.map((sl, idx) => {
+          const songCount = sl.cart ? sl.cart.filter(c => c.type === 'song').length : 0;
+          const dateText = sl.eventDate ? formatDateID(sl.eventDate) : 'Tanpa Tanggal';
+          const authorText = sl.author ? ` · ✍️ oleh ${escapeHtml(sl.author)}` : '';
+          return `
+            <div class="playlist-row">
+              <div style="display: flex; flex-direction: column; gap: 2px; flex: 1; text-align: left;">
+                <span class="playlist-title">${escapeHtml(sl.eventName || 'Ibadah')}</span>
+                <span class="playlist-meta">📅 ${escapeHtml(dateText)} · 🎵 ${songCount} lagu${authorText}</span>
+              </div>
+              <div style="display: flex; gap: 6px;">
+                <button class="btn" data-action="load-playlist" data-idx="${idx}" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); color: #ffffff; padding: 6px 14px; font-size: 12px; border: none;">Muat</button>
+                <button class="btn ghost danger" data-action="delete-playlist" data-idx="${idx}" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); padding: 6px 10px; font-size: 12px;" title="Hapus">✕</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        savedPlaylistsContainer.querySelectorAll('[data-action=load-playlist]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const sl = list[Number(btn.dataset.idx)];
+            if (!sl) return;
+
+            state.cart = sl.cart || [];
+            if (sl.eventName) {
+              selectedEventNameVal = sl.eventName;
+              const labelEl = document.getElementById('selectedEventName');
+              if (labelEl) labelEl.textContent = sl.eventName;
+            }
+            if (sl.eventDate) {
+              const dateEl = document.getElementById('eventDate');
+              if (dateEl) dateEl.value = sl.eventDate;
+            }
+
+            renderCart();
+            renderPreview();
+            closePlaylistModalFunc();
+            const authorMsg = sl.author ? ` (oleh ${sl.author})` : '';
+            showToast(`Playlist "${sl.eventName}"${authorMsg} berhasil dimuat.`);
+          });
+        });
+
+        savedPlaylistsContainer.querySelectorAll('[data-action=delete-playlist]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const sl = list[Number(btn.dataset.idx)];
+            if (!sl) return;
+            if (!confirm(`Hapus playlist "${sl.eventName}" (${sl.author || 'Anonim'}) secara permanen?`)) return;
+
+            showSyncLoading('Menghapus Playlist...', 'Menghapus playlist dari database');
+            try {
+              await deletePlaylistFromSupabase(sl.cloudFilename);
+              btn.closest('.playlist-row').remove();
+              showToast('Playlist berhasil dihapus dari Database.');
+            } catch (e) {
+              console.error(e);
+              showToast('Gagal menghapus playlist: ' + e.message);
+            } finally {
+              hideSyncLoading();
+            }
+          });
+        });
+      }
     } catch (e) {
-      console.warn('Gagal menghapus songlist dari Supabase:', e);
-      throw e;
+      console.error(e);
+      if (savedPlaylistsContainer) {
+        savedPlaylistsContainer.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 20px;">Gagal memuat playlist dari Database.</div>';
+      }
+    } finally {
+      hideSyncLoading();
     }
-  }
-  const adminHash = await ensureAdminHash();
-  const repo = getGithubRepo();
-  const branch = getGithubBranch();
-  if (!repo) return;
-
-  const writeHeaders = {
-    'Content-Type': 'application/json',
-    'X-Admin-Hash': adminHash
-  };
-  const readHeaders = { 'Content-Type': 'application/json' };
-
-  let fileSha = null;
-  try {
-    const fileRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/songlists/${filename}?ref=${branch}`, { headers: readHeaders });
-    if (fileRes.ok) {
-      const fileData = await fileRes.json();
-      fileSha = fileData.sha;
-    }
-  } catch (e) {}
-
-  if (fileSha) {
-    await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/songlists/${filename}`, {
-      method: 'DELETE',
-      headers: writeHeaders,
-      body: JSON.stringify({
-        message: `Delete songlist: ${filename}`,
-        sha: fileSha,
-        branch
-      })
-    });
-  }
-
-  // Remove from manifest
-  try {
-    const manifestRes = await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/songlists/songlists-manifest.json?ref=${branch}`, { headers: readHeaders });
-    if (manifestRes.ok) {
-      const manifestData = await manifestRes.json();
-      const rawText = decodeURIComponent(escape(atob(manifestData.content.replace(/\s/g, ''))));
-      let manifestList = JSON.parse(rawText);
-      manifestList = manifestList.filter(f => f !== filename);
-
-      await fetch(`${WORKER_BASE_URL}/github/repos/${repo}/contents/songlists/songlists-manifest.json`, {
-        method: 'PUT',
-        headers: writeHeaders,
-        body: JSON.stringify({
-          message: `Remove from manifest: ${filename}`,
-          content: utf8ToBase64(JSON.stringify(manifestList, null, 2)),
-          sha: manifestData.sha,
-          branch
-        })
-      });
-    }
-  } catch (e) {}
+  });
 }
-
-// UI Event Listeners for Songlist Cloud Sync
-document.getElementById('saveSonglistBtn').addEventListener('click', async () => {
-  if (state.cart.length === 0) {
-    showToast('Daftar pujian masih kosong.');
-    return;
-  }
-
-  const lastAuthor = localStorage.getItem('song_repo_last_author') || '';
-  const authorInput = prompt('Masukkan nama Anda sebagai pembuat daftar pujian (Author):', lastAuthor);
-  if (authorInput === null) return;
-  const authorName = authorInput.trim() || 'Anonim';
-  localStorage.setItem('song_repo_last_author', authorName);
-
-  const saveBtn = document.getElementById('saveSonglistBtn');
-  const originalText = saveBtn.textContent;
-  saveBtn.disabled = true;
-  saveBtn.textContent = 'Menyimpan...';
-
-  try {
-    const eventName = getEventName();
-    const eventDateVal = document.getElementById('eventDate').value;
-    const songlistData = {
-      id: uid(),
-      eventName: eventName,
-      eventDate: eventDateVal,
-      author: authorName,
-      updatedAt: new Date().toISOString(),
-      cart: state.cart
-    };
-
-    await uploadSonglistToGithub(songlistData);
-    showToast(`Songlist "${eventName}" (${authorName}) berhasil disimpan ke Cloud.`);
-  } catch (e) {
-    console.error(e);
-    showToast('Gagal menyimpan songlist: ' + e.message);
-  } finally {
-    saveBtn.disabled = false;
-    saveBtn.textContent = originalText;
-  }
-});
-
-const songlistModal = document.getElementById('songlistModal');
-const closeSonglistModal = document.getElementById('closeSonglistModal');
-const cancelSonglistModal = document.getElementById('cancelSonglistModal');
-const savedSonglistsContainer = document.getElementById('savedSonglistsContainer');
-
-function closeSonglistModalFunc() {
-  songlistModal.classList.add('hidden');
-}
-
-closeSonglistModal.addEventListener('click', closeSonglistModalFunc);
-cancelSonglistModal.addEventListener('click', closeSonglistModalFunc);
-songlistModal.addEventListener('click', (e) => {
-  if (e.target.id === 'songlistModal') closeSonglistModalFunc();
-});
-
-document.getElementById('openSonglistModalBtn').addEventListener('click', async () => {
-  savedSonglistsContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Memuat songlist tersimpan dari Cloud...</div>';
-  songlistModal.classList.remove('hidden');
-
-  try {
-    const list = await loadCloudSonglists();
-    if (list.length === 0) {
-      savedSonglistsContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada songlist tersimpan di Cloud.</div>';
-      return;
-    }
-
-    savedSonglistsContainer.innerHTML = list.map((sl, idx) => {
-      const songCount = sl.cart ? sl.cart.filter(c => c.type === 'song').length : 0;
-      const dateText = sl.eventDate ? formatDateID(sl.eventDate) : 'Tanpa Tanggal';
-      const authorText = sl.author ? ` · ✍️ oleh ${escapeHtml(sl.author)}` : '';
-      return `
-        <div class="songlist-row">
-          <div style="display: flex; flex-direction: column; gap: 2px; flex: 1; text-align: left;">
-            <span class="songlist-title">${escapeHtml(sl.eventName || 'Ibadah')}</span>
-            <span class="songlist-meta">📅 ${escapeHtml(dateText)} · 🎵 ${songCount} lagu${authorText}</span>
-          </div>
-          <div style="display: flex; gap: 6px;">
-            <button class="btn" data-action="load-songlist" data-idx="${idx}" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); color: #ffffff; padding: 6px 14px; font-size: 12px; border: none;">Muat</button>
-            <button class="btn ghost danger" data-action="delete-songlist" data-idx="${idx}" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4); padding: 6px 10px; font-size: 12px;" title="Hapus">✕</button>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    savedSonglistsContainer.querySelectorAll('[data-action=load-songlist]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const sl = list[Number(btn.dataset.idx)];
-        if (!sl) return;
-
-        state.cart = sl.cart || [];
-        if (sl.eventName) {
-          selectedEventNameVal = sl.eventName;
-          const labelEl = document.getElementById('selectedEventName');
-          if (labelEl) labelEl.textContent = sl.eventName;
-        }
-        if (sl.eventDate) {
-          const dateEl = document.getElementById('eventDate');
-          if (dateEl) dateEl.value = sl.eventDate;
-        }
-
-        renderCart();
-        renderPreview();
-        closeSonglistModalFunc();
-        const authorMsg = sl.author ? ` (oleh ${sl.author})` : '';
-        showToast(`Songlist "${sl.eventName}"${authorMsg} berhasil dimuat.`);
-      });
-    });
-
-    savedSonglistsContainer.querySelectorAll('[data-action=delete-songlist]').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const sl = list[Number(btn.dataset.idx)];
-        if (!sl) return;
-        if (!confirm(`Hapus songlist "${sl.eventName}" (${sl.author || 'Anonim'}) secara permanen?`)) return;
-        showToast('Menghapus songlist...');
-        try {
-          await deleteSonglistFromGithub(sl.cloudFilename);
-          btn.closest('.songlist-row').remove();
-          showToast('Songlist berhasil dihapus dari Database.');
-        } catch (e) {
-          console.error(e);
-          showToast('Gagal menghapus songlist: ' + e.message);
-        }
-      });
-    });
-  } catch (e) {
-    console.error(e);
-    savedSonglistsContainer.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 20px;">Gagal memuat songlist dari Database.</div>';
-  }
-});

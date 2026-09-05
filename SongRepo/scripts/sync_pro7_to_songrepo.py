@@ -21,14 +21,18 @@ import getpass
 from pathlib import Path
 
 # Impor protobuf bindings resmi ProPresenter Decoder v3
-PB_OUT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "ProPresenter Decoder v3", "pb_out"))
-if os.path.exists(PB_OUT_DIR):
-    sys.path.insert(0, PB_OUT_DIR)
+pb_out_local = os.path.abspath(os.path.join(os.path.dirname(__file__), "pb_out"))
+pb_out_parent = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "ProPresenter Decoder v3", "pb_out"))
+
+if os.path.exists(pb_out_local):
+    sys.path.insert(0, pb_out_local)
+elif os.path.exists(pb_out_parent):
+    sys.path.insert(0, pb_out_parent)
 
 try:
     import presentation_pb2
 except ImportError:
-    print(f"❌ Error: Tidak dapat menemukan modul Protobuf di '{PB_OUT_DIR}'.")
+    print(f"❌ Error: Tidak dapat menemukan modul Protobuf di '{pb_out_local}' atau '{pb_out_parent}'.")
     sys.exit(1)
 
 # ============================= KONFIGURASI =============================
@@ -229,10 +233,27 @@ def decode_pro7_file(file_path):
         full_text = "\n".join(parts).rstrip() + "\n"
         full_text = normalize_song_lyrics(full_text)
         formatted_title = normalize_song_lyrics(title).strip()
+
+        # Ekstraksi UUID Presentasi, UUID Arrangement, & File Path
+        pres_uuid = getattr(pres, "uuid", None)
+        doc_uuid_str = pres_uuid.string if (pres_uuid and hasattr(pres_uuid, "string")) else ""
+
+        arr_uuid_str = ""
+        selected_arr = getattr(pres, "selected_arrangement", None)
+        if selected_arr and hasattr(selected_arr, "string") and selected_arr.string:
+            arr_uuid_str = selected_arr.string
+        if not arr_uuid_str:
+            arr_uuid_str = doc_uuid_str
+
+        abs_file_path = str(Path(file_path).resolve())
+
         return {
             "title": formatted_title if formatted_title else title,
             "filename": sanitize_filename(title),
-            "text": full_text
+            "text": full_text,
+            "uuid": doc_uuid_str,
+            "arrangement_uuid": arr_uuid_str,
+            "file_path": abs_file_path
         }
     except Exception as e:
         print(f"  ❌ Gagal mengurai {os.path.basename(file_path)}: {e}")
@@ -493,12 +514,67 @@ def create_batch_commit(tree_items: list, commit_message: str, headers_write: di
 
 
 DEFAULT_SUPABASE_URL = "https://iyrsxvmsghdsdgvxzpwk.supabase.co"
-DEFAULT_SUPABASE_SERVICE_ROLE_KEY = "sb_secret_TyANDulj6kqjtOV2Iatydg_td67anyn"
+ENCRYPTED_SALT_HEX = "47f1f355e3ac407f6abed9ed4d526b24"
+ENCRYPTED_SERVICE_ROLE_KEY = "gAAAAABqm2n_WZCCUcnHgbRJqanQf2U-pZvi_MVIbZGNavO9HyQICHRyA-hbElDJbJnBt6gJFi_JHL2dfKSym3uBicoDo5A8hZPMsjz75IQTyhv3_pA5GbDV9QRgIm20WUWFvaT_NiY0"
 
-def clear_supabase_songs() -> bool:
+def decrypt_service_role_key(password_str: str) -> str:
+    """Dekripsi API key Supabase Service Role menggunakan Fernet + PBKDF2HMAC"""
+    try:
+        from cryptography.fernet import Fernet
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+    except ImportError:
+        print("⚡ Modul 'cryptography' belum terpasang. Mengunduh secara otomatis...")
+        os.system(f"{sys.executable} -m pip install cryptography")
+        from cryptography.fernet import Fernet
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+    salt = bytes.fromhex(ENCRYPTED_SALT_HEX)
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100_000,
+    )
+    derived_key = base64.urlsafe_b64encode(kdf.derive(password_str.encode("utf-8")))
+    f = Fernet(derived_key)
+    return f.decrypt(ENCRYPTED_SERVICE_ROLE_KEY.encode("utf-8")).decode("utf-8")
+
+def get_service_role_key(provided_pwd=None) -> str:
+    """Mendapatkan service role key (dari env var atau dekripsi interaktif via password)"""
+    env_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    if env_key:
+        return env_key
+
+    env_pwd = os.getenv("SUPABASE_DECRYPT_PASSWORD") or os.getenv("DECRYPT_PASSWORD")
+    if provided_pwd is None and env_pwd:
+        provided_pwd = env_pwd
+
+    if provided_pwd is not None:
+        try:
+            return decrypt_service_role_key(provided_pwd)
+        except Exception as e:
+            print(f"❌ Kata sandi dekripsi salah atau gagal: {e}")
+            sys.exit(1)
+
+    print("\n🔒 SINKRONISASI SUPABASE DATABASE (OTENTIKASI API KEY)")
+    pwd = getpass.getpass("🔑 Masukkan Kata Sandi Dekripsi API Key: ").strip()
+
+    try:
+        decrypted_key = decrypt_service_role_key(pwd)
+        print("  ✅ Dekripsi API Key berhasil.")
+        return decrypted_key
+    except Exception as e:
+        print(f"❌ Kata sandi dekripsi salah atau gagal: {e}")
+        sys.exit(1)
+
+def clear_supabase_songs(service_key: str = None) -> bool:
     """Mengosongkan / menghapus semua baris dari tabel 'songs' di Supabase Database"""
     supabase_url = os.getenv("SUPABASE_URL", DEFAULT_SUPABASE_URL)
-    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", DEFAULT_SUPABASE_SERVICE_ROLE_KEY)
+    if not service_key:
+        service_key = get_service_role_key()
+
     if not supabase_url or not service_key:
         print("❌ Error: SUPABASE_URL & SUPABASE_SERVICE_ROLE_KEY tidak diatur.")
         return False
@@ -520,10 +596,12 @@ def clear_supabase_songs() -> bool:
         return False
     return False
 
-def sync_to_supabase(songs_list: list):
+def sync_to_supabase(songs_list: list, service_key: str = None):
     """Upsert daftar lagu ke tabel 'songs' di Supabase Database dalam batch 100 lagu"""
     supabase_url = os.getenv("SUPABASE_URL", DEFAULT_SUPABASE_URL)
-    service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", DEFAULT_SUPABASE_SERVICE_ROLE_KEY)
+    if not service_key:
+        service_key = get_service_role_key()
+
     if not supabase_url or not service_key:
         print("ℹ️ SUPABASE_URL & SUPABASE_SERVICE_ROLE_KEY tidak diatur. Skip sync ke Supabase.")
         return
@@ -545,6 +623,9 @@ def sync_to_supabase(songs_list: list):
             "filename": s["filename"],
             "content": s["text"],
             "content_hash": compute_content_hash(s["text"]),
+            "uuid": s.get("uuid", ""),
+            "arrangement_uuid": s.get("arrangement_uuid", ""),
+            "file_path": s.get("file_path", ""),
             "updated_at": now_iso
         })
 
@@ -562,6 +643,55 @@ def sync_to_supabase(songs_list: list):
             print(f"  ❌ Gagal upsert batch Supabase: {e}")
 
     print(f"\n🎉 Total {success_count} lagu berhasil disimpan/diperbarui di Supabase Database!")
+
+def select_libraries_interactively(default_dir: Path) -> list:
+    """Memindai sub-folder library ProPresenter dan memberikan menu interaktif bagi pengguna"""
+    if not default_dir.exists():
+        print(f"⚠️ Folder default '{default_dir}' tidak ditemukan.")
+        custom_input = input("Ketik path folder ProPresenter Libraries: ").strip()
+        if custom_input:
+            default_dir = Path(custom_input)
+            if not default_dir.exists():
+                print(f"❌ Error: Folder '{default_dir}' tidak ada!")
+                return []
+        else:
+            return []
+
+    sub_dirs = [d for d in default_dir.iterdir() if d.is_dir() and not d.name.startswith(".")]
+
+    print("\n" + "=" * 70)
+    print(" 📚 PILIHAN LIBRARY PROPRESENTER 7")
+    print("=" * 70)
+    print(f" Root Folder: {default_dir}")
+
+    if not sub_dirs:
+        print(" 📂 (Folder tunggal terdeteksi)")
+        return [default_dir]
+
+    print(" Silakan pilih library yang ingin disinkronkan:")
+    print("   [A] SEMUA LIBRARY (Pindai seluruh folder)")
+    for idx, sub in enumerate(sub_dirs, 1):
+        pro_count = len(list(sub.glob("**/*.pro")))
+        print(f"   [{idx}] {sub.name} ({pro_count} file .pro)")
+    print("   [C] Custom Path (Ketik path folder lain)")
+
+    choice = input("\n Pilihan Anda (misal A, 1, 1,2, atau C, default: A): ").strip().upper()
+    if not choice or choice == "A":
+        return [default_dir]
+    elif choice == "C":
+        c_path = input(" Ketik path lokasi folder library: ").strip()
+        p = Path(c_path)
+        return [p] if p.exists() else []
+
+    selected = []
+    tokens = [t.strip() for t in choice.split(",") if t.strip()]
+    for t in tokens:
+        if t.isdigit():
+            i = int(t) - 1
+            if 0 <= i < len(sub_dirs):
+                selected.append(sub_dirs[i])
+
+    return selected if selected else [default_dir]
 
 # ============================= MAIN SYNC LOGIC =============================
 def main():
@@ -595,24 +725,28 @@ def main():
             dry_run_sync()
             return
 
-    # 1. Lokasi Library ProPresenter 7
+    # Dekripsi API Key secara interaktif sebelum pemrosesan
+    service_key = get_service_role_key()
+
+    # 1. Pilih Folder Library ProPresenter 7 secara interaktif
     default_dir = get_default_pro7_library_path()
-    print(f"\n📂 Default Folder ProPresenter 7: {default_dir}")
-    custom_dir = input("Tekan ENTER untuk menggunakan default, atau ketik path lain: ").strip()
-    
-    lib_dir = Path(custom_dir) if custom_dir else default_dir
-    if not lib_dir.exists():
-        print(f"❌ Error: Folder '{lib_dir}' tidak ditemukan!")
+    target_dirs = select_libraries_interactively(default_dir)
+
+    if not target_dirs:
+        print("❌ Tidak ada folder library yang dipilih. Operasi dibatalkan.")
         return
 
-    # 2. Pindai Berkas .pro di Folder
-    pro_files = list(lib_dir.glob("**/*.pro"))
-    print(f"\n🔍 Ditemukan {len(pro_files)} berkas lagu ProPresenter 7 (.pro)")
+    # 2. Pindai Berkas .pro di Folder terpilih
+    pro_files = []
+    for d in target_dirs:
+        pro_files.extend(list(d.glob("**/*.pro")))
+
+    print(f"\n🔍 Ditemukan {len(pro_files)} berkas lagu ProPresenter 7 (.pro) pada library terpilih.")
     if not pro_files:
         print("⚠️ Tidak ada file .pro ditemukan di folder tersebut.")
         return
 
-    print(" Mengurai lirik & chord dari file .pro...")
+    print(" Mengurai lirik, chord, uuid, & file_path dari file .pro...")
     songs_list = []
     for pro_path in pro_files:
         parsed = decode_pro7_file(pro_path)
@@ -636,12 +770,12 @@ def main():
             return
 
         print("\n🔥 Memulai pengosongan tabel 'songs' di Supabase...")
-        if not clear_supabase_songs():
+        if not clear_supabase_songs(service_key):
             print("❌ Gagal mengosongkan database. Operasi dibatalkan.")
             return
 
     # 4. Upload / Sync ke Supabase Database
-    sync_to_supabase(songs_list)
+    sync_to_supabase(songs_list, service_key)
 
 if __name__ == "__main__":
     main()

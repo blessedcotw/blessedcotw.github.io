@@ -14,12 +14,20 @@ CREATE TABLE IF NOT EXISTS public.songs (
     content TEXT NOT NULL,
     filename TEXT UNIQUE NOT NULL,
     content_hash TEXT,
+    file_path TEXT,
+    uuid TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Tambah kolom metadata file ProPresenter lokal jika belum ada
+ALTER TABLE public.songs ADD COLUMN IF NOT EXISTS file_path TEXT;
+ALTER TABLE public.songs ADD COLUMN IF NOT EXISTS uuid TEXT;
+ALTER TABLE public.songs ADD COLUMN IF NOT EXISTS arrangement_uuid TEXT;
+
 CREATE INDEX IF NOT EXISTS songs_title_idx ON public.songs (title);
 CREATE INDEX IF NOT EXISTS songs_category_idx ON public.songs (category);
+CREATE INDEX IF NOT EXISTS songs_uuid_idx ON public.songs (uuid);
 
 ALTER TABLE public.songs ENABLE ROW LEVEL SECURITY;
 
@@ -64,12 +72,12 @@ DROP POLICY IF EXISTS "Allow authenticated write user_songs" ON public.user_song
 DROP POLICY IF EXISTS "Allow write user_songs" ON public.user_songs;
 DROP POLICY IF EXISTS "Allow web write user_songs" ON public.user_songs;
 
--- Kebijakan Tabel user_songs: BISA BACA & BISA SIMPAN/EDIT DARI WEB
+-- Kebijakan Tabel user_songs: BISA BACA PUBLIK & HANYA AUTHENTICATED/ADMIN BISA SIMPAN/EDIT
 CREATE POLICY "Allow public read user_songs" ON public.user_songs
     FOR SELECT TO anon, authenticated USING (true);
 
-CREATE POLICY "Allow web write user_songs" ON public.user_songs
-    FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow authenticated write user_songs" ON public.user_songs
+    FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 
 -- --------------------------------------------------------------------
@@ -95,9 +103,9 @@ DROP POLICY IF EXISTS "Allow authenticated write songlists" ON public.songlists;
 DROP POLICY IF EXISTS "Allow write songlists" ON public.songlists;
 DROP POLICY IF EXISTS "Allow web write songlists" ON public.songlists;
 
--- Kebijakan Tabel songlists: BISA BACA & BISA SIMPAN/EDIT DARI WEB
+-- Kebijakan Tabel songlists: BISA BACA PUBLIK & HANYA AUTHENTICATED/ADMIN BISA SIMPAN/EDIT
 CREATE POLICY "Allow public read songlists" ON public.songlists
     FOR SELECT TO anon, authenticated USING (true);
 
-CREATE POLICY "Allow web write songlists" ON public.songlists
-    FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow authenticated write songlists" ON public.songlists
+    FOR ALL TO authenticated USING (true) WITH CHECK (true);

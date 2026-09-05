@@ -113,17 +113,17 @@
             style="flex: 1; font-family: 'Inter'; font-size: 13px; padding: 9px;">+ Lagu Baru</button>
         </div>
         <div style="display: flex; gap: 8px; width: 100%;">
-          <button class="btn ghost" id="saveSonglistBtn"
-            style="flex: 1; font-family: 'Inter'; font-size: 13px; padding: 9px; color: var(--accent-gold); border-color: rgba(245, 158, 11, 0.4);" title="Simpan daftar pujian ini ke Cloud">💾 Simpan Songlist</button>
-          <button class="btn ghost" id="openSonglistModalBtn"
-            style="flex: 1; font-family: 'Inter'; font-size: 13px; padding: 9px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);" title="Buka daftar pujian yang tersimpan di Cloud">📂 Buka Songlist</button>
+          <button class="btn ghost" id="savePlaylistBtn"
+            style="flex: 1; font-family: 'Inter'; font-size: 13px; padding: 9px; color: var(--accent-gold); border-color: rgba(245, 158, 11, 0.4);" title="Simpan playlist ini ke Cloud">💾 Simpan Playlist</button>
+          <button class="btn ghost" id="openPlaylistModalBtn"
+            style="flex: 1; font-family: 'Inter'; font-size: 13px; padding: 9px; color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);" title="Buka playlist yang tersimpan di Cloud">📂 Buka Playlist</button>
         </div>
       </div>
     </aside>
 
     <section class="pane preview-pane">
       <h2 class="title">Pratinjau</h2>
-      <div class="sub">Tampilan lagu-lagu sesuai urutan di daftar pujian.</div>
+      <div class="sub">Tampilan lagu-lagu sesuai urutan di playlist.</div>
       <div class="preview-controls">
         <label class="chord-toggle"><input type="checkbox" id="chordToggle"> Tampilkan Chord <em>(jika
             tersedia)</em></label>
@@ -132,10 +132,11 @@
         <label class="chord-toggle"><input type="checkbox" id="capsToggle"> Lirik Kapital</label>
       </div>
       <div class="preview-sheet" id="previewSheet"></div>
-      <div style="display: flex; gap: 8px; margin-top: 10px; width: 100%; max-width: 620px;">
-        <button class="btn export-btn" id="exportBtn" style="flex: 1; margin-top: 0;" disabled>Unduh PDF</button>
-        <button class="btn export-btn" id="exportWordBtn" style="flex: 1; margin-top: 0;" disabled>Unduh Word</button>
-        <button class="btn export-btn" id="exportPro6Btn" style="flex: 1; margin-top: 0;" disabled title="Ekspor daftar lagu ke format ProPresenter 6 (.pro6 / zip)">Unduh Pro6</button>
+      <div style="display: flex; gap: 8px; margin-top: 10px; width: 100%; max-width: 620px; flex-wrap: wrap;">
+        <button class="btn export-btn" id="exportBtn" style="flex: 1; min-width: 110px; margin-top: 0;" disabled>Unduh PDF</button>
+        <button class="btn export-btn" id="exportWordBtn" style="flex: 1; min-width: 110px; margin-top: 0;" disabled>Unduh Word</button>
+        <button class="btn export-btn" id="exportPro6Btn" style="flex: 1; min-width: 110px; margin-top: 0;" disabled title="Ekspor daftar lagu ke format ProPresenter 6 (.pro6 / zip)">Unduh Pro6</button>
+        <button class="btn export-btn" id="exportProPlaylistBtn" style="display: none; flex: 1; min-width: 130px; margin-top: 0; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border: none; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);" disabled title="Ekspor daftar lagu ke format ProPresenter 7 (.proplaylist)">Unduh .proplaylist</button>
       </div>
     </section>
   </div>
@@ -150,8 +151,7 @@
         <button class="close-x" id="closeEditor">✕</button>
       </div>
       <div class="ebody">
-        <p class="hint">Centang bagian yang ingin dipakai. Seret <span class="handle">⠿⠿</span> untuk mengubah urutan.
-        </p>
+        <p class="hint">Centang bagian yang ingin dipakai. Seret <span class="handle">⠿⠿</span> untuk mengubah urutan.</p>
         <div id="sectionList"></div>
       </div>
       <div class="efoot" style="display: flex; gap: 8px; justify-content: flex-end; width: 100%; flex-wrap: wrap;">
@@ -162,7 +162,7 @@
           style="color: var(--accent-gold); border-color: rgba(245, 158, 11, 0.4);" title="Unduh file .pro6 lagu ini">📥 Unduh Pro6</button>
         <button class="btn ghost" id="editSongContentBtn"
           style="color: var(--accent-gold); border-color: rgba(245, 158, 11, 0.4);">✏️ Edit Lagu</button>
-        <button class="btn" id="saveEditor" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #ffffff;">Tambah ke Daftar</button>
+        <button class="btn" id="saveEditor" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #ffffff;">Tambah ke Playlist</button>
       </div>
     </div>
   </div>
@@ -171,7 +171,7 @@
     <div class="editor" style="max-width: 600px; width: 95%;">
       <div class="ehead">
         <div>
-          <div class="eyebrow">Daftar Pujian</div>
+          <div class="eyebrow">Playlist</div>
           <h2>Tambah Lagu Baru</h2>
         </div>
         <button class="close-x" id="closeManualSongModal">✕</button>
@@ -184,9 +184,12 @@
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 8px;">
-          <label
-            style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Section
-            & Lirik</label>
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px;">
+            <label
+              style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin: 0;">Section
+              & Lirik</label>
+            <span style="font-size: 11px; color: var(--text-muted);">Seret <span class="handle">⠿⠿</span> atau gunakan <strong style="color: var(--accent-gold);">▲ ▼</strong> untuk mengatur urutan</span>
+          </div>
           <div id="manualSectionsContainer" style="display: flex; flex-direction: column; gap: 14px;">
             <!-- Dynamic sections injected here -->
           </div>
@@ -226,28 +229,59 @@
     </div>
   </div>
 
-  <div class="overlay hidden" id="songlistModal">
+  <div class="overlay hidden" id="playlistModal">
     <div class="editor" style="max-width: 560px; width: 95%;">
       <div class="ehead">
         <div>
-          <div class="eyebrow">Daftar Pujian Tersimpan</div>
-          <h2>Buka Songlist Cloud</h2>
+          <div class="eyebrow">Playlist Tersimpan</div>
+          <h2>Buka Playlist Cloud</h2>
         </div>
-        <button class="close-x" id="closeSonglistModal">✕</button>
+        <button class="close-x" id="closePlaylistModal">✕</button>
       </div>
       <div class="ebody" style="max-height: 60vh; overflow-y: auto;">
-        <div id="savedSonglistsContainer" style="display: flex; flex-direction: column; gap: 8px;">
-          <!-- List of saved songlists rendered dynamically -->
+        <div id="savedPlaylistsContainer" style="display: flex; flex-direction: column; gap: 8px;">
+          <!-- List of saved playlists rendered dynamically -->
         </div>
       </div>
       <div class="efoot">
-        <button class="btn ghost" id="cancelSonglistModal">Tutup</button>
+        <button class="btn ghost" id="cancelPlaylistModal">Tutup</button>
       </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="placeholderModal" style="z-index: 2500;">
+    <div class="editor" style="max-width: 500px; width: 92%;">
+      <div class="ehead">
+        <div>
+          <div class="eyebrow" style="color: #ef4444;">⚠️ Validasi Lagu ProPresenter</div>
+          <h2>Lagu Belum Ada di ProPresenter</h2>
+        </div>
+        <button class="close-x" id="closePlaceholderModal">✕</button>
+      </div>
+      <div class="ebody">
+        <p class="hint" style="color: #cbd5e1;">Terdapat lagu buatan user yang belum terhubung ke file ProPresenter lokal:</p>
+        <ul id="placeholderSongList" style="background: rgba(15, 23, 42, 0.6); padding: 12px 18px 12px 32px; border-radius: var(--radius); border: 1px solid var(--border-color); color: var(--accent-gold); font-family: 'Roboto Mono', monospace; font-size: 12.5px; line-height: 1.6; margin-bottom: 14px;"></ul>
+        <p class="hint" style="font-size: 12px;">Apakah Anda ingin mengunduh berkas playlist (.proplaylist) ini atau mengunduh file lirik (.pro6 / .txt)?</p>
+      </div>
+      <div class="efoot" style="display: flex; gap: 8px; justify-content: flex-end; width: 100%; flex-wrap: wrap;">
+        <button class="btn ghost" id="cancelPlaceholderBtn">Batal</button>
+        <button class="btn ghost" id="downloadPlaceholderSongBtn" style="color: var(--accent-gold); border-color: rgba(245, 158, 11, 0.4);" title="Unduh berkas lirik lagu buatan user">📥 Unduh File Lagu</button>
+        <button class="btn" id="confirmDownloadProPlaylistBtn" style="background: linear-gradient(135deg, #10b981, #059669); color: #ffffff;">Unduh Playlist (.proplaylist)</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay sync-loading-overlay hidden" id="syncLoadingOverlay" style="z-index: 3000;">
+    <div class="sync-loading-card">
+      <div class="sync-spinner"></div>
+      <h3 id="syncLoadingTitle">Menyinkronkan Cloud...</h3>
+      <p id="syncLoadingSubtitle">Memuat data lagu dan playlist terbaru dari database</p>
     </div>
   </div>
 
   <div class="toast" id="toast"></div>
 
+  <script src="proplaylist.js"></script>
   <script src="app.js"></script>
 </body>
 
