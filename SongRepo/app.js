@@ -2154,36 +2154,7 @@ function promptAndVerifyAdmin(messageText) {
       setLoading(true);
       const hash = await hashPassword(pwd);
       try {
-<<<<<<< HEAD
         if (!supabaseClient) {
-=======
-        const res = await fetch(`${WORKER_BASE_URL}/auth/verify`, {
-          method: 'POST',
-          headers: { 'X-Admin-Hash': hash }
-        });
-        if (res.ok) {
-          adminHashCache = hash;
-          sessionStorage.setItem('song_repo_is_admin', 'true');
-          localStorage.setItem('song_repo_admin_hash', hash);
-
-          // Inisialisasi Sesi Supabase Auth jika terkonfigurasi
-          if (supabaseClient) {
-            try {
-              await supabaseClient.auth.signInWithPassword({
-                email: 'mm.cotw@gmail.com',
-                password: pwd
-              });
-              console.log('✅ Sesi Supabase Auth berhasil diaktifkan.');
-            } catch (supaErr) {
-              console.warn('Supabase Auth warning:', supaErr);
-            }
-          }
-
-          iconEl.textContent = '✅';
-          cleanup();
-          resolve(true);
-        } else if (res.status === 403) {
->>>>>>> f54893a383406e0d1b7cb62eab0c42995ba8e83d
           setLoading(false);
           showError('Database client belum terkonfigurasi.');
           return;
