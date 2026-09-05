@@ -35,7 +35,8 @@ try:
     from sync_pro7_to_songrepo import (
         decrypt_service_role_key,
         get_service_role_key,
-        DEFAULT_SUPABASE_URL
+        DEFAULT_SUPABASE_URL,
+        safe_urlopen
     )
 except ImportError as e:
     print(f"❌ Error: Gagal mengimpor modul sync_pro7_to_songrepo.py: {e}")
@@ -104,7 +105,7 @@ def fetch_table_data(url: str, service_key: str, table_name: str) -> list:
 
         req = urllib.request.Request(endpoint, headers=headers, method="GET")
         try:
-            with urllib.request.urlopen(req) as resp:
+            with safe_urlopen(req) as resp:
                 res_text = resp.read().decode("utf-8")
                 rows = json.loads(res_text) if res_text else []
                 if isinstance(rows, list) and len(rows) > 0:
@@ -184,7 +185,7 @@ def clear_table(url: str, service_key: str, table_name: str) -> bool:
     }
     req = urllib.request.Request(endpoint, headers=headers, method="DELETE")
     try:
-        with urllib.request.urlopen(req) as resp:
+        with safe_urlopen(req) as resp:
             if resp.status in (200, 204):
                 print(f"    ✓ Tabel '{table_name}' berhasil dikosongkan.")
                 return True
@@ -199,7 +200,19 @@ def restore_table(url: str, service_key: str, table_name: str, rows: list) -> in
         return 0
 
     print(f"  ⚡ Memulihkan {len(rows)} baris data ke tabel '{table_name}'...")
-    endpoint = f"{url.rstrip('/')}/rest/v1/{table_name}"
+    seen = {}
+    deduped = []
+    for r in rows:
+        fn = r.get("filename")
+        if fn:
+            seen[fn] = r
+        else:
+            deduped.append(r)
+    if seen:
+        deduped.extend(seen.values())
+    rows = deduped
+
+    endpoint = f"{url.rstrip('/')}/rest/v1/{table_name}?on_conflict=filename"
     headers = {
         "apikey": service_key,
         "Authorization": f"Bearer {service_key}",
@@ -213,7 +226,7 @@ def restore_table(url: str, service_key: str, table_name: str, rows: list) -> in
         chunk = rows[i:i + chunk_size]
         req = urllib.request.Request(endpoint, data=json.dumps(chunk).encode("utf-8"), headers=headers, method="POST")
         try:
-            with urllib.request.urlopen(req) as resp:
+            with safe_urlopen(req) as resp:
                 if resp.status in (200, 201):
                     success_count += len(chunk)
                     print(f"    ✓ Batch {i // chunk_size + 1}/{-(-len(rows) // chunk_size)} ({len(chunk)} baris) berhasil di-upsert.")

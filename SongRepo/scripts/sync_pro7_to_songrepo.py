@@ -17,8 +17,31 @@ import glob
 import datetime
 import urllib.request
 import urllib.error
+import ssl
 import getpass
 from pathlib import Path
+
+def safe_urlopen(req):
+    """Membuka koneksi HTTP/HTTPS dengan verifikasi SSL standar dan fallback jika sertifikat CA lokal OS bermasalah."""
+    try:
+        try:
+            import certifi
+            ctx = ssl.create_default_context(cafile=certifi.where())
+        except Exception:
+            ctx = ssl.create_default_context()
+        return urllib.request.urlopen(req, context=ctx)
+    except urllib.error.URLError as e:
+        err_str = str(e)
+        if "CERTIFICATE_VERIFY_FAILED" in err_str or (hasattr(e, "reason") and "CERTIFICATE_VERIFY_FAILED" in str(e.reason)):
+            ctx = ssl._create_unverified_context()
+            return urllib.request.urlopen(req, context=ctx)
+        raise e
+    except Exception as e:
+        err_str = str(e)
+        if "CERTIFICATE_VERIFY_FAILED" in err_str:
+            ctx = ssl._create_unverified_context()
+            return urllib.request.urlopen(req, context=ctx)
+        raise e
 
 # Impor protobuf bindings resmi ProPresenter Decoder v3
 pb_out_local = os.path.abspath(os.path.join(os.path.dirname(__file__), "pb_out"))
@@ -337,7 +360,7 @@ def http_request(url: str, method: str = "GET", headers: dict = None, body_data:
 
     req = urllib.request.Request(url, data=req_body, headers=headers, method=method)
     try:
-        with urllib.request.urlopen(req) as response:
+        with safe_urlopen(req) as response:
             res_text = response.read().decode("utf-8")
             return response.status, json.loads(res_text) if res_text else {}
     except urllib.error.HTTPError as e:
@@ -600,7 +623,7 @@ def clear_supabase_songs(service_key: str = None) -> bool:
 
     req = urllib.request.Request(endpoint, headers=headers, method="DELETE")
     try:
-        with urllib.request.urlopen(req) as resp:
+        with safe_urlopen(req) as resp:
             if resp.status in (200, 204):
                 print("  🗑️ [Supabase] Berhasil menghapus/mengosongkan seluruh data lama di tabel 'songs'.")
                 return True
@@ -620,7 +643,7 @@ def sync_to_supabase(songs_list: list, service_key: str = None):
         return
 
     print("\n⚡ Menyinkronkan lagu ke Supabase PostgreSQL Database...")
-    endpoint = f"{supabase_url.rstrip('/')}/rest/v1/songs"
+    endpoint = f"{supabase_url.rstrip('/')}/rest/v1/songs?on_conflict=filename"
     headers = {
         "apikey": service_key,
         "Authorization": f"Bearer {service_key}",
@@ -628,19 +651,21 @@ def sync_to_supabase(songs_list: list, service_key: str = None):
         "Prefer": "resolution=merge-duplicates"
     }
 
-    records = []
+    records_map = {}
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
     for s in songs_list:
-        records.append({
+        fname = s["filename"]
+        records_map[fname] = {
             "title": s["title"],
-            "filename": s["filename"],
+            "filename": fname,
             "content": s["text"],
             "content_hash": compute_content_hash(s["text"]),
             "uuid": s.get("uuid", ""),
             "arrangement_uuid": s.get("arrangement_uuid", ""),
             "file_path": s.get("file_path", ""),
             "updated_at": now_iso
-        })
+        }
+    records = list(records_map.values())
 
     chunk_size = 100
     success_count = 0
@@ -648,12 +673,18 @@ def sync_to_supabase(songs_list: list, service_key: str = None):
         chunk = records[i:i + chunk_size]
         req = urllib.request.Request(endpoint, data=json.dumps(chunk).encode('utf-8'), headers=headers, method="POST")
         try:
-            with urllib.request.urlopen(req) as resp:
+            with safe_urlopen(req) as resp:
                 if resp.status in (200, 201):
                     success_count += len(chunk)
                     print(f"  ✅ [Supabase] Batch {i // chunk_size + 1} ({len(chunk)} lagu) berhasil di-upsert.")
         except Exception as e:
-            print(f"  ❌ Gagal upsert batch Supabase: {e}")
+            err_msg = str(e)
+            if hasattr(e, "read"):
+                try:
+                    err_msg += f" - {e.read().decode('utf-8')}"
+                except Exception:
+                    pass
+            print(f"  ❌ Gagal upsert batch Supabase: {err_msg}")
 
     print(f"\n🎉 Total {success_count} lagu berhasil disimpan/diperbarui di Supabase Database!")
 
