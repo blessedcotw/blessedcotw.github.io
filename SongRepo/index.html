@@ -37,7 +37,7 @@
       <img src="../SuaraGembala/cotw_logo.png" alt="Logo COTW" class="brand-logo" onerror="this.style.display='none'">
       <div>
         <div class="mark">Perpustakaan Lagu <em>GPdI COTW Temanggung</em></div>
-        <div class="sub">Susun daftar pujian, atur ulang bait, unduh PDF/Word/Pro6</div>
+        <div class="sub">Susun daftar pujian, atur ulang bait, unduh PDF/Word atau Sinkronkan ke ProPresenter</div>
       </div>
     </div>
     <div class="status-container">
@@ -135,8 +135,7 @@
       <div style="display: flex; gap: 8px; margin-top: 10px; width: 100%; max-width: 620px; flex-wrap: wrap;">
         <button class="btn export-btn" id="exportBtn" style="flex: 1; min-width: 110px; margin-top: 0;" disabled>Unduh PDF</button>
         <button class="btn export-btn" id="exportWordBtn" style="flex: 1; min-width: 110px; margin-top: 0;" disabled>Unduh Word</button>
-        <button class="btn export-btn" id="exportPro6Btn" style="flex: 1; min-width: 110px; margin-top: 0;" disabled title="Ekspor daftar lagu ke format ProPresenter 6 (.pro6 / zip)">Unduh Pro6</button>
-        <button class="btn export-btn" id="exportProPlaylistBtn" style="display: none; flex: 1; min-width: 130px; margin-top: 0; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border: none; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);" disabled title="Ekspor daftar lagu ke format ProPresenter 7 (.proplaylist)">Unduh .proplaylist</button>
+        <button class="btn export-btn" id="exportProPlaylistBtn" style="flex: 2; min-width: 220px; margin-top: 0; background: linear-gradient(135deg, #f59e0b, #d97706); color: #ffffff; border: none; box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);" disabled title="Sinkronkan playlist langsung ke ProPresenter 7 via REST API">⚡ Sinkronkan Playlist ke ProPresenter 7</button>
       </div>
     </section>
   </div>
@@ -267,6 +266,88 @@
         <button class="btn ghost" id="cancelPlaceholderBtn">Batal</button>
         <button class="btn ghost" id="downloadPlaceholderSongBtn" style="color: var(--accent-gold); border-color: rgba(245, 158, 11, 0.4);" title="Unduh berkas lirik lagu buatan user">📥 Unduh File Lagu</button>
         <button class="btn" id="confirmDownloadProPlaylistBtn" style="background: linear-gradient(135deg, #10b981, #059669); color: #ffffff;">Unduh Playlist (.proplaylist)</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="userSongsWarningModal" style="z-index: 2550;">
+    <div class="editor" style="max-width: 520px; width: 92%;">
+      <div class="ehead">
+        <div>
+          <div class="eyebrow" style="color: #f59e0b;">⚠️ Validasi Lagu ProPresenter</div>
+          <h2>Terdapat lagu yang belum tersedia pada database ProPresenter</h2>
+        </div>
+        <button class="close-x" id="closeUserSongsWarningModal">✕</button>
+      </div>
+      <div class="ebody" style="display: flex; flex-direction: column; gap: 14px; max-height: 55vh; overflow-y: auto;">
+        <p class="hint" style="color: #cbd5e1; font-size: 13px; line-height: 1.5; margin: 0;">
+          Lagu-lagu di bawah ini belum terhubung di Library ProPresenter lokal. Anda dapat mengunduh berkas <b>.pro6</b> tiap lagu untuk diimpor ke ProPresenter:
+        </p>
+
+        <div id="userSongsListContainer" style="display: flex; flex-direction: column; gap: 8px;">
+          <!-- Dynamic user songs injected here -->
+        </div>
+      </div>
+      <div class="efoot" style="display: flex; gap: 8px; justify-content: flex-end; width: 100%; flex-wrap: wrap;">
+        <button class="btn ghost" id="cancelUserSongsWarningModalBtn">Batal</button>
+        <button class="btn" id="continueSyncWithUserSongsBtn" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #ffffff;">Lanjutkan Sinkronkan</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="pro7ConfigModal" style="z-index: 2600;">
+    <div class="editor" style="max-width: 450px; width: 92%;">
+      <div class="ehead">
+        <div>
+          <div class="eyebrow" style="color: #38bdf8;">🖥️ Konfigurasi Server</div>
+          <h2>Koneksi ProPresenter API</h2>
+        </div>
+        <button class="close-x" id="closePro7ConfigModal">✕</button>
+      </div>
+      <div class="ebody" style="display: flex; flex-direction: column; gap: 14px;">
+        <div id="pro7ConfigInfoText" class="hint" style="color: #cbd5e1; font-size: 13px; line-height: 1.5; margin: 0;">
+          Tidak dapat terhubung ke server ProPresenter. Silakan periksa IP/Domain dan Port ProPresenter API Anda:
+        </div>
+        
+        <div class="field" style="margin-bottom: 0;">
+          <label for="pro7HostInput" style="font-weight: 600;">IP Address / Domain Server</label>
+          <input type="text" id="pro7HostInput" placeholder="localhost" value="localhost"
+            style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius); font-family: 'Inter', sans-serif; font-size: 14px; background: var(--bg-card); outline: none; color: #ffffff;">
+        </div>
+
+        <div class="field" style="margin-bottom: 0;">
+          <label for="pro7PortInput" style="font-weight: 600;">Port API ProPresenter (Default: 50000)</label>
+          <input type="number" id="pro7PortInput" placeholder="50000" value="50000"
+            style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius); font-family: 'Inter', sans-serif; font-size: 14px; background: var(--bg-card); outline: none; color: #ffffff;">
+        </div>
+
+        <div id="pro7ConnectionStatus" style="font-size: 12.5px; min-height: 20px; line-height: 1.4;"></div>
+      </div>
+      <div class="efoot" style="display: flex; gap: 8px; justify-content: flex-end; width: 100%; flex-wrap: wrap;">
+        <button class="btn ghost" id="cancelPro7ConfigBtn">Batal</button>
+        <button class="btn ghost" id="testPro7ConnectionBtn" style="color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);">🔌 Tes Koneksi</button>
+        <button class="btn" id="saveAndSyncPro7Btn" style="background: linear-gradient(135deg, #10b981, #059669); color: #ffffff;">Simpan & Sinkronkan</button>
+      </div>
+    </div>
+  <!-- Custom Popup System Modal (Alert, Confirm, Prompt) -->
+  <div class="overlay hidden" id="customPopupModal" style="z-index: 3500;">
+    <div class="editor" style="max-width: 440px; width: 92%;">
+      <div class="ehead">
+        <div>
+          <div class="eyebrow" id="customPopupEyebrow" style="color: #38bdf8;">ℹ️ Pemberitahuan</div>
+          <h2 id="customPopupTitle" style="font-size: 17px; margin-top: 2px;">Pemberitahuan</h2>
+        </div>
+        <button class="close-x" id="customPopupCloseX">✕</button>
+      </div>
+      <div class="ebody" style="display: flex; flex-direction: column; gap: 12px; margin-top: 4px;">
+        <div id="customPopupMessage" style="color: #cbd5e1; font-size: 13.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word;"></div>
+        <div id="customPopupInputWrap" class="field hidden" style="margin-bottom: 0; margin-top: 6px;">
+          <input type="text" id="customPopupInput" placeholder="" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: var(--radius); font-family: 'Inter', sans-serif; font-size: 14px; background: var(--bg-card); outline: none; color: #ffffff; transition: border-color 0.2s;">
+        </div>
+      </div>
+      <div class="efoot" style="display: flex; gap: 8px; justify-content: flex-end; width: 100%; margin-top: 14px; flex-wrap: wrap;">
+        <button class="btn ghost" id="customPopupCancelBtn">Batal</button>
+        <button class="btn" id="customPopupConfirmBtn" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); color: #ffffff; padding: 8px 18px;">OK</button>
       </div>
     </div>
   </div>

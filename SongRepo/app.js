@@ -740,7 +740,71 @@ document.getElementById('addBreakBtn').addEventListener('click', () => {
   renderPreview();
 });
 
+/* ============================= PLAYLIST DRAFT PERSISTENCE ============================= */
+const DRAFT_STORAGE_KEY = 'song_repo_playlist_draft_v1';
+
+function savePlaylistDraftToLocalStorage() {
+  try {
+    const draft = {
+      cart: state.cart || [],
+      eventName: selectedEventNameVal || 'Ibadah Minggu Pagi',
+      eventCustom: document.getElementById('eventNameCustom') ? document.getElementById('eventNameCustom').value : '',
+      eventDate: document.getElementById('eventDate') ? document.getElementById('eventDate').value : '',
+      showChords: state.showChords || false,
+      showNotes: state.showNotes || false,
+      showCaps: state.showCaps || false,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  } catch (e) {
+    console.warn('Gagal menyimpan draf playlist ke localStorage:', e);
+  }
+}
+
+function restorePlaylistDraftFromLocalStorage() {
+  try {
+    const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!raw) return;
+    const draft = JSON.parse(raw);
+
+    if (Array.isArray(draft.cart) && draft.cart.length > 0) {
+      state.cart = draft.cart;
+    }
+    if (draft.eventName) {
+      selectedEventNameVal = draft.eventName;
+      const selectedEventLabel = document.getElementById('selectedEventName');
+      if (selectedEventLabel) selectedEventLabel.textContent = draft.eventName;
+    }
+    if (draft.eventCustom) {
+      const eventCustomInput = document.getElementById('eventNameCustom');
+      if (eventCustomInput) eventCustomInput.value = draft.eventCustom;
+    }
+    if (draft.eventDate) {
+      const eventDateInput = document.getElementById('eventDate');
+      if (eventDateInput) eventDateInput.value = draft.eventDate;
+    }
+    if (typeof draft.showChords === 'boolean') {
+      state.showChords = draft.showChords;
+      const cb = document.getElementById('chordToggle');
+      if (cb) cb.checked = draft.showChords;
+    }
+    if (typeof draft.showNotes === 'boolean') {
+      state.showNotes = draft.showNotes;
+      const cb = document.getElementById('notesToggle');
+      if (cb) cb.checked = draft.showNotes;
+    }
+    if (typeof draft.showCaps === 'boolean') {
+      state.showCaps = draft.showCaps;
+      const cb = document.getElementById('capsToggle');
+      if (cb) cb.checked = draft.showCaps;
+    }
+  } catch (e) {
+    console.warn('Gagal memuat draf playlist dari localStorage:', e);
+  }
+}
+
 function renderCart() {
+  savePlaylistDraftToLocalStorage();
   const wrap = document.getElementById('cartList');
   const exportBtn = document.getElementById('exportBtn');
   const exportWordBtn = document.getElementById('exportWordBtn');
@@ -1417,72 +1481,498 @@ function exportSingleSongPro6(songItem) {
 }
 
 // Ekspor seluruh daftar lagu ke format ProPresenter 6 (Single .pro6 jika 1 lagu, ZIP bundle jika banyak)
-document.getElementById('exportPro6Btn').addEventListener('click', async () => {
-  const songItems = state.cart.filter(i => i.type === 'song');
-  if (songItems.length === 0) return;
+const exportPro6Btn = document.getElementById('exportPro6Btn');
+if (exportPro6Btn) {
+  exportPro6Btn.addEventListener('click', async () => {
+    const songItems = state.cart.filter(i => i.type === 'song');
+    if (songItems.length === 0) return;
 
-  const exportPro6Btn = document.getElementById('exportPro6Btn');
-  const originalText = exportPro6Btn.textContent;
-  exportPro6Btn.disabled = true;
-  exportPro6Btn.textContent = 'Membuat Pro6...';
+    const originalText = exportPro6Btn.textContent;
+    exportPro6Btn.disabled = true;
+    exportPro6Btn.textContent = 'Membuat Pro6...';
 
-  try {
-    const eventName = getEventName();
-    const eventDate = formatDateID(document.getElementById('eventDate').value);
+    try {
+      const eventName = getEventName();
+      const eventDate = formatDateID(document.getElementById('eventDate').value);
 
-    // Jika hanya 1 lagu di daftar, langsung unduh file .pro6 tunggal
-    if (songItems.length === 1) {
-      exportSingleSongPro6(songItems[0]);
-      return;
+      // Jika hanya 1 lagu di daftar, langsung unduh file .pro6 tunggal
+      if (songItems.length === 1) {
+        exportSingleSongPro6(songItems[0]);
+        return;
+      }
+
+      // Jika ada beberapa lagu, bundle menjadi satu file ZIP menggunakan JSZip
+      if (typeof JSZip === 'undefined') {
+        throw new Error('Library JSZip belum siap.');
+      }
+
+      const zip = new JSZip();
+      songItems.forEach((item, sIdx) => {
+        const songNumStr = String(sIdx + 1).padStart(2, '0');
+        const safeTitle = (item.title || 'Lagu').replace(/[\/\\:*?"<>|]/g, '-').trim();
+        const fileName = `${songNumStr}. ${safeTitle}.pro6`;
+        const xmlContent = buildPro6Xml(item);
+        zip.file(fileName, xmlContent);
+      });
+
+      let zipFileName = `ProPresenter6_${eventName}`;
+      if (eventDate) {
+        zipFileName += `_${eventDate}`;
+      }
+      zipFileName = zipFileName.replace(/[\/\\:*?"<>|]/g, '-') + '.zip';
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(zipBlob);
+      link.download = zipFileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+      showToast('Bundle ProPresenter 6 (.zip) berhasil diunduh.');
+    } catch (err) {
+      console.error('Gagal mengekspor ProPresenter 6:', err);
+      showToast('Gagal mengekspor ProPresenter 6: ' + err.message);
+    } finally {
+      exportPro6Btn.disabled = false;
+      exportPro6Btn.textContent = originalText;
     }
+  });
+}
 
-    // Jika ada beberapa lagu, bundle menjadi satu file ZIP menggunakan JSZip
-    if (typeof JSZip === 'undefined') {
-      throw new Error('Library JSZip belum siap.');
-    }
-
-    const zip = new JSZip();
-    songItems.forEach((item, sIdx) => {
-      const songNumStr = String(sIdx + 1).padStart(2, '0');
-      const safeTitle = (item.title || 'Lagu').replace(/[\/\\:*?"<>|]/g, '-').trim();
-      const fileName = `${songNumStr}. ${safeTitle}.pro6`;
-      const xmlContent = buildPro6Xml(item);
-      zip.file(fileName, xmlContent);
-    });
-
-    let zipFileName = `ProPresenter6_${eventName}`;
-    if (eventDate) {
-      zipFileName += `_${eventDate}`;
-    }
-    zipFileName = zipFileName.replace(/[\/\\:*?"<>|]/g, '-') + '.zip';
-
-    const zipBlob = await zip.generateAsync({ type: 'blob' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(zipBlob);
-    link.download = zipFileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
-
-    showToast('Bundle ProPresenter 6 (.zip) berhasil diunduh.');
-  } catch (err) {
-    console.error('Gagal mengekspor ProPresenter 6:', err);
-    showToast('Gagal mengekspor ProPresenter 6: ' + err.message);
-  } finally {
-    exportPro6Btn.disabled = false;
-    exportPro6Btn.textContent = originalText;
-  }
-});
-
-/* ============================= EXPORT PROPRESENTER 7 (.proplaylist) ============================= */
+/* ============================= PROPRESENTER 7 API SYNC & CONFIG ============================= */
 const exportProPlaylistBtn = document.getElementById('exportProPlaylistBtn');
+const pro7ConfigModal = document.getElementById('pro7ConfigModal');
+const closePro7ConfigModal = document.getElementById('closePro7ConfigModal');
+const cancelPro7ConfigBtn = document.getElementById('cancelPro7ConfigBtn');
+const testPro7ConnectionBtn = document.getElementById('testPro7ConnectionBtn');
+const saveAndSyncPro7Btn = document.getElementById('saveAndSyncPro7Btn');
+const pro7HostInput = document.getElementById('pro7HostInput');
+const pro7PortInput = document.getElementById('pro7PortInput');
+const pro7ConnectionStatus = document.getElementById('pro7ConnectionStatus');
+const pro7ConfigInfoText = document.getElementById('pro7ConfigInfoText');
+
 const placeholderModal = document.getElementById('placeholderModal');
 const placeholderSongList = document.getElementById('placeholderSongList');
 const closePlaceholderModal = document.getElementById('closePlaceholderModal');
 const cancelPlaceholderBtn = document.getElementById('cancelPlaceholderBtn');
 const downloadPlaceholderSongBtn = document.getElementById('downloadPlaceholderSongBtn');
 const confirmDownloadProPlaylistBtn = document.getElementById('confirmDownloadProPlaylistBtn');
+
+function getPro7ApiConfig() {
+  return {
+    host: (localStorage.getItem('pro7_api_host') || 'localhost').trim(),
+    port: (localStorage.getItem('pro7_api_port') || '50000').trim()
+  };
+}
+
+function setPro7ApiConfig(host, port) {
+  const cleanHost = (host || 'localhost').trim();
+  const cleanPort = (port || '50000').trim();
+  localStorage.setItem('pro7_api_host', cleanHost);
+  localStorage.setItem('pro7_api_port', cleanPort);
+}
+
+function showPro7ConfigModal(failedHost = null, failedPort = null, isErrorTriggered = false) {
+  const config = getPro7ApiConfig();
+  const hostVal = failedHost || config.host;
+  const portVal = failedPort || config.port;
+
+  if (pro7HostInput) pro7HostInput.value = hostVal;
+  if (pro7PortInput) pro7PortInput.value = portVal;
+
+  if (pro7ConfigInfoText) {
+    if (isErrorTriggered) {
+      pro7ConfigInfoText.innerHTML = `⚠️ Tidak dapat terhubung ke ProPresenter API di <b style="color:#ef4444;">http://${escapeHtml(hostVal)}:${escapeHtml(portVal)}</b>.<br>Silakan periksa IP/Domain dan Port ProPresenter API Anda:`;
+    } else {
+      pro7ConfigInfoText.innerHTML = `Pengaturan koneksi REST API ProPresenter 7. Masukkan IP Address / Domain dan Port (Default: <b>50000</b>):`;
+    }
+  }
+
+  if (pro7ConnectionStatus) pro7ConnectionStatus.innerHTML = '';
+  if (pro7ConfigModal) pro7ConfigModal.classList.remove('hidden');
+}
+
+function hidePro7ConfigModal() {
+  if (pro7ConfigModal) pro7ConfigModal.classList.add('hidden');
+}
+
+if (closePro7ConfigModal) closePro7ConfigModal.addEventListener('click', hidePro7ConfigModal);
+if (cancelPro7ConfigBtn) cancelPro7ConfigBtn.addEventListener('click', hidePro7ConfigModal);
+
+async function testPro7Connection() {
+  const host = (pro7HostInput ? pro7HostInput.value : 'localhost').trim() || 'localhost';
+  const port = (pro7PortInput ? pro7PortInput.value : '50000').trim() || '50000';
+
+  if (pro7ConnectionStatus) {
+    pro7ConnectionStatus.innerHTML = `<span style="color: #38bdf8;">🔄 Menguji koneksi ke http://${escapeHtml(host)}:${escapeHtml(port)}...</span>`;
+  }
+  if (testPro7ConnectionBtn) testPro7ConnectionBtn.disabled = true;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+    const res = await fetch(`http://${host}:${port}/v1/playlists`, {
+      method: 'GET',
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      if (pro7ConnectionStatus) {
+        pro7ConnectionStatus.innerHTML = `<span style="color: #10b981; font-weight: 600;">✅ Koneksi Berhasil! Terhubung ke ProPresenter API (Port ${escapeHtml(port)}).</span>`;
+      }
+      return true;
+    } else {
+      if (pro7ConnectionStatus) {
+        pro7ConnectionStatus.innerHTML = `<span style="color: #ef4444;">❌ Server merespons error HTTP ${res.status}. Pastikan Network API di ProPresenter sudah diaktifkan.</span>`;
+      }
+      return false;
+    }
+  } catch (err) {
+    if (pro7ConnectionStatus) {
+      pro7ConnectionStatus.innerHTML = `<span style="color: #ef4444;">❌ Gagal terhubung ke http://${escapeHtml(host)}:${escapeHtml(port)}. Pastikan ProPresenter berjalan dan IP/Port sudah benar.</span>`;
+    }
+    return false;
+  } finally {
+    if (testPro7ConnectionBtn) testPro7ConnectionBtn.disabled = false;
+  }
+}
+
+if (testPro7ConnectionBtn) {
+  testPro7ConnectionBtn.addEventListener('click', testPro7Connection);
+}
+
+if (saveAndSyncPro7Btn) {
+  saveAndSyncPro7Btn.addEventListener('click', async () => {
+    const host = (pro7HostInput ? pro7HostInput.value : 'localhost').trim() || 'localhost';
+    const port = (pro7PortInput ? pro7PortInput.value : '50000').trim() || '50000';
+
+    setPro7ApiConfig(host, port);
+    hidePro7ConfigModal();
+    await syncPlaylistToProPresenter(host, port);
+  });
+}
+
+function formatProPresenterPlaylistName(eventName, rawDate) {
+  let cleanEvent = (eventName || 'Pujian')
+    .replace(/ibadah\s*/gi, '')
+    .trim();
+  if (!cleanEvent) cleanEvent = (eventName || 'Pujian').trim();
+
+  let dateStr = '';
+  if (rawDate && rawDate.includes('-')) {
+    const parts = rawDate.split('-');
+    if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+      const y = parts[0].slice(-2);
+      const m = parts[1].padStart(2, '0');
+      const d = parts[2].padStart(2, '0');
+      dateStr = `${d}${m}${y}`;
+    }
+  }
+
+  if (dateStr) {
+    return `${cleanEvent} ${dateStr}`;
+  } else {
+    return cleanEvent;
+  }
+}
+
+/* ============================= USER SONGS WARNING MODAL ============================= */
+const userSongsWarningModal = document.getElementById('userSongsWarningModal');
+const closeUserSongsWarningModal = document.getElementById('closeUserSongsWarningModal');
+const cancelUserSongsWarningModalBtn = document.getElementById('cancelUserSongsWarningModalBtn');
+const continueSyncWithUserSongsBtn = document.getElementById('continueSyncWithUserSongsBtn');
+const userSongsListContainer = document.getElementById('userSongsListContainer');
+
+function showUserSongsWarningModal(unlinkedItems, onContinue) {
+  if (!userSongsListContainer) return;
+
+  userSongsListContainer.innerHTML = unlinkedItems.map(item => `
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px; background: rgba(15, 23, 42, 0.6);">
+      <div style="font-family: 'Inter', sans-serif; font-weight: 600; font-size: 13.5px; color: #ffffff; flex: 1; word-break: break-word;">
+        ${escapeHtml(item.presentationName)}
+      </div>
+      <button class="btn ghost download-pro6-single-btn" data-cart-id="${item.cartItem.cartId}" style="padding: 6px 12px; font-size: 12px; color: var(--accent-gold); border-color: rgba(245, 158, 11, 0.4); white-space: nowrap;" title="Unduh berkas .pro6 untuk lagu ini">
+        📥 Unduh .pro6
+      </button>
+    </div>
+  `).join('');
+
+  userSongsListContainer.querySelectorAll('.download-pro6-single-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cartId = btn.dataset.cartId;
+      const found = unlinkedItems.find(u => u.cartItem.cartId === cartId);
+      if (found) {
+        exportSingleSongPro6(found.songRecord || found.cartItem);
+      }
+    });
+  });
+
+  if (userSongsWarningModal) userSongsWarningModal.classList.remove('hidden');
+
+  continueSyncWithUserSongsBtn.onclick = () => {
+    hideUserSongsWarningModal();
+    if (typeof onContinue === 'function') onContinue();
+  };
+}
+
+function hideUserSongsWarningModal() {
+  if (userSongsWarningModal) userSongsWarningModal.classList.add('hidden');
+}
+
+if (closeUserSongsWarningModal) closeUserSongsWarningModal.addEventListener('click', hideUserSongsWarningModal);
+if (cancelUserSongsWarningModalBtn) cancelUserSongsWarningModalBtn.addEventListener('click', hideUserSongsWarningModal);
+
+async function syncPlaylistToProPresenter(explicitHost = null, explicitPort = null, skipWarning = false) {
+  const songItems = state.cart.filter(i => i.type === 'song');
+  if (songItems.length === 0) {
+    showToast('Pilih setidaknya satu lagu untuk disinkronkan ke ProPresenter.');
+    return;
+  }
+
+  const config = getPro7ApiConfig();
+  const host = explicitHost || config.host;
+  const port = explicitPort || config.port;
+  const baseUrl = `http://${host}:${port}`;
+
+  const originalText = exportProPlaylistBtn ? exportProPlaylistBtn.textContent : '';
+  if (exportProPlaylistBtn) {
+    exportProPlaylistBtn.disabled = true;
+    exportProPlaylistBtn.textContent = '🔄 Menghubungkan...';
+  }
+
+  try {
+    // 1. Cek Koneksi ke ProPresenter REST API
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+    let testRes;
+    try {
+      testRes = await fetch(`${baseUrl}/v1/playlists`, {
+        method: 'GET',
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+    } catch (netErr) {
+      clearTimeout(timeoutId);
+      throw new Error('CONNECTION_FAILED');
+    }
+
+    if (!testRes || !testRes.ok) {
+      throw new Error('CONNECTION_FAILED');
+    }
+
+    const existingPlaylistsData = await testRes.json();
+    const playlistsList = Array.isArray(existingPlaylistsData)
+      ? existingPlaylistsData
+      : (existingPlaylistsData && Array.isArray(existingPlaylistsData.value) ? existingPlaylistsData.value : []);
+
+    // 2. Format Nama Playlist: "Nama Ibadah DDMMYY" (tanpa kata "Ibadah", contoh: "Minggu Pagi 010126")
+    const eventName = getEventName();
+    const rawDate = document.getElementById('eventDate').value;
+    const playlistName = formatProPresenterPlaylistName(eventName, rawDate);
+
+    if (exportProPlaylistBtn) exportProPlaylistBtn.textContent = '🔄 Menyinkronkan...';
+
+    // 3. Cek / Buat Playlist Baru via POST /v1/playlists
+    let targetPlaylistId = playlistName;
+    const existingPlaylist = playlistsList.find(p => p.id && (p.id.name === playlistName || p.id.uuid === playlistName || p.id === playlistName));
+
+    if (existingPlaylist && existingPlaylist.id) {
+      targetPlaylistId = existingPlaylist.id.uuid || existingPlaylist.id.name || playlistName;
+    } else {
+      const createRes = await fetch(`${baseUrl}/v1/playlists`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: playlistName,
+          type: 'playlist'
+        })
+      });
+
+      if (createRes.ok) {
+        const createData = await createRes.json();
+        if (createData && createData.id) {
+          targetPlaylistId = createData.id.uuid || createData.id.name || playlistName;
+        }
+      }
+    }
+
+    // 4. Susun Daftar Item Playlist (Headers, Presentations, & Placeholders)
+    const songsMap = new Map();
+    if (Array.isArray(state.songs)) {
+      state.songs.forEach(s => {
+        if (s.id) songsMap.set(s.id, s);
+        if (s.title) songsMap.set(s.title.trim().toLowerCase(), s);
+      });
+    }
+
+    // Pindai seluruh nama presentation yang ada di Library ProPresenter lokal
+    const pro7PresentationNames = new Set();
+    try {
+      const libRes = await fetch(`${baseUrl}/v1/libraries`, { signal: controller.signal });
+      if (libRes.ok) {
+        const libData = await libRes.json();
+        const libList = Array.isArray(libData) ? libData : (libData.value || []);
+        for (const lib of libList) {
+          if (lib && lib.uuid) {
+            const itemRes = await fetch(`${baseUrl}/v1/library/${lib.uuid}`, { signal: controller.signal });
+            if (itemRes.ok) {
+              const itemData = await itemRes.json();
+              const items = Array.isArray(itemData) ? itemData : (itemData.items || []);
+              items.forEach(it => {
+                if (it && it.name) pro7PresentationNames.add(it.name.trim().toLowerCase());
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Catatan: Tidak dapat memindai daftar library Pro7:', e);
+    }
+
+    // Cek apakah ada lagu buatan user / lagu yang belum ada di database ProPresenter
+    if (!skipWarning) {
+      const unlinkedItems = [];
+      state.cart.forEach(item => {
+        if (item.type === 'song') {
+          const titleKey = (item.title || '').trim().toLowerCase();
+          const songRecord = songsMap.get(item.songId) || songsMap.get(item.id) || (titleKey ? songsMap.get(titleKey) : null) || item;
+
+          let presentationName = (item.title || (songRecord ? songRecord.title : 'Lagu')).trim();
+          if (songRecord && songRecord.file_path) {
+            const rawFileName = songRecord.file_path.replace(/\\/g, '/').split('/').pop();
+            if (rawFileName && rawFileName.toLowerCase().endsWith('.pro')) {
+              presentationName = rawFileName.slice(0, -4).trim();
+            }
+          }
+
+          const cleanTitleKey = presentationName.toLowerCase();
+          const isUserGenerated = !songRecord 
+            || songRecord.isManual 
+            || songRecord._isUserSongTable 
+            || (item && item.isManual)
+            || (songRecord.groups && songRecord.groups.includes('manual')) 
+            || (songRecord.id && String(songRecord.id).startsWith('manual_'))
+            || (item && item.id && String(item.id).startsWith('manual_'));
+
+          // user_songs selalu dianggap tidak ada di Library Pro7 (agar selalu prompt & kirim placeholder)
+          const existsInPro7 = isUserGenerated 
+            ? false 
+            : (pro7PresentationNames.size > 0 
+                ? pro7PresentationNames.has(cleanTitleKey) 
+                : Boolean(songRecord && songRecord.file_path));
+
+          if (!existsInPro7) {
+            unlinkedItems.push({
+              cartItem: item,
+              songRecord: songRecord || item,
+              presentationName
+            });
+          }
+        }
+      });
+
+      if (unlinkedItems.length > 0) {
+        if (exportProPlaylistBtn) {
+          exportProPlaylistBtn.disabled = false;
+          exportProPlaylistBtn.textContent = originalText || '⚡ Sinkronkan Playlist ke ProPresenter 7';
+        }
+        showUserSongsWarningModal(unlinkedItems, () => {
+          syncPlaylistToProPresenter(explicitHost, explicitPort, true);
+        });
+        return;
+      }
+    }
+
+    const payloadItems = state.cart.map(item => {
+      if (item.type === 'break') {
+        return {
+          id: { name: (item.label || 'Sesi Baru').toUpperCase() },
+          type: 'header',
+          is_hidden: false,
+          is_pco: false,
+          header_color: { alpha: 1.0, red: 0.15, green: 0.45, blue: 0.85 }
+        };
+      } else {
+        const titleKey = (item.title || '').trim().toLowerCase();
+        const songRecord = songsMap.get(item.songId) || songsMap.get(item.id) || (titleKey ? songsMap.get(titleKey) : null) || item;
+
+        let presentationName = (item.title || (songRecord ? songRecord.title : 'Lagu')).trim();
+        if (songRecord && songRecord.file_path) {
+          const rawFileName = songRecord.file_path.replace(/\\/g, '/').split('/').pop();
+          if (rawFileName && rawFileName.toLowerCase().endsWith('.pro')) {
+            presentationName = rawFileName.slice(0, -4).trim();
+          }
+        }
+
+        const cleanTitleKey = presentationName.toLowerCase();
+        const isUserGenerated = !songRecord 
+          || songRecord.isManual 
+          || songRecord._isUserSongTable 
+          || (item && item.isManual)
+          || (songRecord.groups && songRecord.groups.includes('manual')) 
+          || (songRecord.id && String(songRecord.id).startsWith('manual_'))
+          || (item && item.id && String(item.id).startsWith('manual_'));
+
+        // Cek apakah lagu benar-benar ada di Library ProPresenter (user_songs selalu false -> placeholder)
+        const existsInPro7 = isUserGenerated 
+          ? false 
+          : (pro7PresentationNames.size > 0 
+              ? pro7PresentationNames.has(cleanTitleKey) 
+              : Boolean(songRecord && songRecord.file_path));
+
+        // Jika ada di Library Pro7 -> type: "presentation", jika lagu user_songs / belum ada -> type: "placeholder"
+        const itemType = existsInPro7 ? 'presentation' : 'placeholder';
+
+        const songItem = {
+          id: {
+            name: presentationName
+          },
+          type: itemType,
+          is_hidden: false,
+          is_pco: false
+        };
+
+        // Hanya sertakan UUID jika valid ProPresenter UUID string (32-36 karakter hex/dash) dan bertipe presentation
+        if (itemType === 'presentation' && songRecord && typeof songRecord.uuid === 'string' && /^[0-9a-fA-F-]{32,36}$/.test(songRecord.uuid.trim())) {
+          songItem.id.uuid = songRecord.uuid.trim();
+        }
+
+        return songItem;
+      }
+    });
+
+    // 5. Masukkan Item ke Playlist via PUT /v1/playlist/{targetPlaylistId}
+    const putUrl = `${baseUrl}/v1/playlist/${encodeURIComponent(targetPlaylistId)}`;
+    const putRes = await fetch(putUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payloadItems)
+    });
+
+    if (!putRes.ok && putRes.status !== 204) {
+      throw new Error(`Gagal memperbarui item playlist (HTTP ${putRes.status})`);
+    }
+
+    showToast(`⚡ Playlist "${playlistName}" berhasil disinkronkan ke ProPresenter!`);
+  } catch (err) {
+    console.error('ProPresenter Sync Error:', err);
+    if (err.message === 'CONNECTION_FAILED') {
+      showPro7ConfigModal(host, port, true);
+    } else {
+      showToast('⚠️ Gagal sinkron ke ProPresenter: ' + err.message);
+    }
+  } finally {
+    if (exportProPlaylistBtn) {
+      exportProPlaylistBtn.disabled = false;
+      exportProPlaylistBtn.textContent = originalText || '⚡ Sinkronkan Playlist ke ProPresenter 7';
+    }
+  }
+}
 
 async function triggerProPlaylistDownload() {
   if (typeof ProPlaylistGenerator === 'undefined') {
@@ -1492,8 +1982,6 @@ async function triggerProPlaylistDownload() {
 
   const eventName = getEventName();
   const eventDate = document.getElementById('eventDate').value;
-
-  showToast('📌 Disclaimer: Export playlist tidak menyertakan data arrangement.');
 
   try {
     const filename = ProPlaylistGenerator.formatFilename(eventName, eventDate);
@@ -1524,26 +2012,7 @@ async function triggerProPlaylistDownload() {
 
 if (exportProPlaylistBtn) {
   exportProPlaylistBtn.addEventListener('click', () => {
-    const songItems = state.cart.filter(i => i.type === 'song');
-    if (songItems.length === 0) return;
-
-    if (typeof ProPlaylistGenerator === 'undefined') {
-      triggerProPlaylistDownload();
-      return;
-    }
-
-    const placeholders = ProPlaylistGenerator.detectPlaceholders(state.cart, state.songs);
-
-    if (placeholders.length > 0) {
-      if (placeholderSongList) {
-        placeholderSongList.innerHTML = placeholders.map(p => `<li>${escapeHtml(p.title)}</li>`).join('');
-      }
-      if (placeholderModal) {
-        placeholderModal.classList.remove('hidden');
-      }
-    } else {
-      triggerProPlaylistDownload();
-    }
+    syncPlaylistToProPresenter();
   });
 }
 
@@ -1703,7 +2172,7 @@ async function deleteManualSong(songId) {
   const song = state.songs.find(s => s.id === songId);
   if (!song) return;
 
-  if (!confirm('Apakah Anda yakin ingin menghapus lagu ini secara permanen dari Cloud?')) return;
+  if (!await customConfirm('Apakah Anda yakin ingin menghapus lagu ini secara permanen dari Cloud?', 'Hapus Lagu Permanen', '⚠️ Hapus Lagu')) return;
 
   showSyncLoading('Menghapus Lagu...', 'Menghapus lagu dari cloud database');
   try {
@@ -1724,7 +2193,7 @@ async function deleteManualSong(songId) {
     showToast('Lagu berhasil dihapus.');
   } catch (e) {
     console.error(e);
-    alert('Gagal menghapus dari Cloud: ' + e.message + '\n\nAksi dibatalkan.');
+    await customAlert('Gagal menghapus dari Cloud: ' + e.message + '\n\nAksi dibatalkan.', 'Gagal Hapus Lagu', '❌ Error');
   } finally {
     hideSyncLoading();
   }
@@ -1876,10 +2345,10 @@ function createManualSectionRow(labelVal = '', lyricsVal = '') {
     }
   });
 
-  row.querySelector('.btn-remove-section').addEventListener('click', () => {
+  row.querySelector('.btn-remove-section').addEventListener('click', async () => {
     const rowsCount = manualSectionsContainer.querySelectorAll('.manual-section-row').length;
     if (rowsCount <= 1) {
-      alert('Lagu harus memiliki minimal satu section.');
+      await customAlert('Lagu harus memiliki minimal satu section.', 'Validasi Form', '⚠️ Peringatan');
       return;
     }
     row.remove();
@@ -1921,14 +2390,14 @@ saveManualSong.addEventListener('click', () => {
   checkAdminAuth(async () => {
     const rawTitle = manualSongTitle.value.trim();
     if (!rawTitle) {
-      alert('Judul lagu tidak boleh kosong.');
+      await customAlert('Judul lagu tidak boleh kosong.', 'Validasi Form', '⚠️ Peringatan');
       return;
     }
     const title = formatTitle(rawTitle);
 
     const rows = manualSectionsContainer.querySelectorAll('.manual-section-row');
     if (rows.length === 0) {
-      alert('Lagu harus memiliki minimal satu section.');
+      await customAlert('Lagu harus memiliki minimal satu section.', 'Validasi Form', '⚠️ Peringatan');
       return;
     }
 
@@ -1942,11 +2411,11 @@ saveManualSong.addEventListener('click', () => {
       const rawLyrics = rows[i].querySelector('.manual-section-lyrics').value.trim();
 
       if (!rawLabel) {
-        alert(`Nama section ke-${i + 1} tidak boleh kosong.`);
+        await customAlert(`Nama section ke-${i + 1} tidak boleh kosong.`, 'Validasi Form', '⚠️ Peringatan');
         return;
       }
       if (!rawLyrics) {
-        alert(`Lirik section "${rawLabel}" tidak boleh kosong.`);
+        await customAlert(`Lirik section "${rawLabel}" tidak boleh kosong.`, 'Validasi Form', '⚠️ Peringatan');
         return;
       }
 
@@ -2058,7 +2527,7 @@ saveManualSong.addEventListener('click', () => {
       showToast(isEditing ? 'Lagu berhasil diperbarui di Database.' : 'Lagu berhasil disimpan ke Database.');
     } catch (e) {
       console.error(e);
-      alert('Gagal menyimpan lagu: ' + e.message + '\n\nAksi dibatalkan.');
+      await customAlert('Gagal menyimpan lagu: ' + e.message + '\n\nAksi dibatalkan.', 'Gagal Simpan Lagu', '❌ Error');
     } finally {
       hideSyncLoading();
       saveManualSong.disabled = false;
@@ -2068,6 +2537,108 @@ saveManualSong.addEventListener('click', () => {
 });
 
 /* ============================= SUPABASE CLOUD SINKRONISASI & AUTH ============================= */
+/* ============================= CUSTOM POPUP SYSTEM (MODAL ALERT, CONFIRM, PROMPT) ============================= */
+function showCustomPopup({ title, message, eyebrow, type = 'alert', defaultValue = '' }) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('customPopupModal');
+    const eyebrowEl = document.getElementById('customPopupEyebrow');
+    const titleEl = document.getElementById('customPopupTitle');
+    const msgEl = document.getElementById('customPopupMessage');
+    const inputWrap = document.getElementById('customPopupInputWrap');
+    const inputEl = document.getElementById('customPopupInput');
+    const cancelBtn = document.getElementById('customPopupCancelBtn');
+    const confirmBtn = document.getElementById('customPopupConfirmBtn');
+    const closeX = document.getElementById('customPopupCloseX');
+
+    if (!modal) {
+      if (type === 'confirm') resolve(window.confirm(message));
+      else if (type === 'prompt') resolve(window.prompt(message, defaultValue));
+      else { window.alert(message); resolve(); }
+      return;
+    }
+
+    eyebrowEl.textContent = eyebrow || (type === 'confirm' ? '❓ Konfirmasi' : type === 'prompt' ? '✏️ Input Data' : 'ℹ️ Informasi');
+    eyebrowEl.style.color = type === 'confirm' ? '#f59e0b' : type === 'prompt' ? '#38bdf8' : '#38bdf8';
+    titleEl.textContent = title || (type === 'confirm' ? 'Konfirmasi' : type === 'prompt' ? 'Input' : 'Pemberitahuan');
+    msgEl.textContent = message || '';
+
+    if (type === 'prompt') {
+      inputWrap.classList.remove('hidden');
+      inputEl.value = defaultValue || '';
+      setTimeout(() => { inputEl.focus(); inputEl.select(); }, 50);
+    } else {
+      inputWrap.classList.add('hidden');
+    }
+
+    if (type === 'alert') {
+      cancelBtn.style.display = 'none';
+      confirmBtn.textContent = 'OK';
+      confirmBtn.style.background = 'linear-gradient(135deg, #0ea5e9, #0284c7)';
+    } else if (type === 'confirm') {
+      cancelBtn.style.display = 'inline-block';
+      cancelBtn.textContent = 'Batal';
+      confirmBtn.textContent = 'Ya, Lanjutkan';
+      confirmBtn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+    } else if (type === 'prompt') {
+      cancelBtn.style.display = 'inline-block';
+      cancelBtn.textContent = 'Batal';
+      confirmBtn.textContent = 'Simpan';
+      confirmBtn.style.background = 'linear-gradient(135deg, #0ea5e9, #0284c7)';
+    }
+
+    modal.classList.remove('hidden');
+
+    function cleanup() {
+      modal.classList.add('hidden');
+      confirmBtn.removeEventListener('click', onConfirm);
+      cancelBtn.removeEventListener('click', onCancel);
+      if (closeX) closeX.removeEventListener('click', onCancel);
+      if (type === 'prompt') inputEl.removeEventListener('keydown', onKeyDown);
+    }
+
+    function onConfirm() {
+      cleanup();
+      if (type === 'prompt') resolve(inputEl.value);
+      else if (type === 'confirm') resolve(true);
+      else resolve();
+    }
+
+    function onCancel() {
+      cleanup();
+      if (type === 'prompt') resolve(null);
+      else if (type === 'confirm') resolve(false);
+      else resolve();
+    }
+
+    function onKeyDown(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        onConfirm();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        onCancel();
+      }
+    }
+
+    confirmBtn.addEventListener('click', onConfirm);
+    cancelBtn.addEventListener('click', onCancel);
+    if (closeX) closeX.addEventListener('click', onCancel);
+    if (type === 'prompt') inputEl.addEventListener('keydown', onKeyDown);
+  });
+}
+
+function customAlert(message, title, eyebrow) {
+  return showCustomPopup({ type: 'alert', message, title, eyebrow });
+}
+
+function customConfirm(message, title, eyebrow) {
+  return showCustomPopup({ type: 'confirm', message, title, eyebrow });
+}
+
+function customPrompt(message, defaultValue, title, eyebrow) {
+  return showCustomPopup({ type: 'prompt', message, defaultValue, title, eyebrow });
+}
+
 let adminHashCache = null;
 
 async function hashPassword(password) {
@@ -2360,6 +2931,7 @@ setupPointerDrag(document.getElementById('cartList'), (newOrder) => {
   renderPreview();
 });
 
+restorePlaylistDraftFromLocalStorage();
 scanLibrary();
 renderCart();
 renderPreview();
@@ -2457,7 +3029,7 @@ if (savePlaylistBtn) {
     }
 
     const lastAuthor = localStorage.getItem('song_repo_last_author') || '';
-    const authorInput = prompt('Masukkan nama Anda sebagai pembuat playlist (Author):', lastAuthor);
+    const authorInput = await customPrompt('Masukkan nama Anda sebagai pembuat playlist (Author):', lastAuthor, 'Simpan Playlist', '✍️ Author Playlist');
     if (authorInput === null) return;
     const authorName = authorInput.trim() || 'Anonim';
     localStorage.setItem('song_repo_last_author', authorName);
@@ -2576,7 +3148,7 @@ if (openPlaylistModalBtn) {
           btn.addEventListener('click', async () => {
             const sl = list[Number(btn.dataset.idx)];
             if (!sl) return;
-            if (!confirm(`Hapus playlist "${sl.eventName}" (${sl.author || 'Anonim'}) secara permanen?`)) return;
+            if (!await customConfirm(`Hapus playlist "${sl.eventName}" (${sl.author || 'Anonim'}) secara permanen?`, 'Hapus Playlist', '⚠️ Hapus Playlist')) return;
 
             showSyncLoading('Menghapus Playlist...', 'Menghapus playlist dari database');
             try {
