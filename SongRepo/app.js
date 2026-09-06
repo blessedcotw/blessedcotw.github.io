@@ -2949,7 +2949,6 @@ async function ensureAdminHash() {
 
 async function savePlaylistToSupabase(playlistData) {
   if (!supabaseClient) throw new Error('Database belum terkonfigurasi.');
-  await ensureAdminHash();
 
   const sanitizedEvent = (playlistData.eventName || 'ibadah')
     .toLowerCase()
@@ -2958,16 +2957,32 @@ async function savePlaylistToSupabase(playlistData) {
   const dateStr = playlistData.eventDate || new Date().toISOString().slice(0, 10);
   const filename = `playlist_${dateStr}_${sanitizedEvent}_${playlistData.id.slice(0, 6)}.json`;
 
-  const { error } = await supabaseClient
+  const payload = {
+    event_name: playlistData.eventName,
+    event_date: playlistData.eventDate || null,
+    author: playlistData.author || 'Anonim',
+    filename: filename,
+    cart_data: playlistData.cart || [],
+    updated_at: new Date().toISOString()
+  };
+
+  let { error } = await supabaseClient
     .from('songlists')
-    .upsert({
-      event_name: playlistData.eventName,
-      event_date: playlistData.eventDate || null,
-      author: playlistData.author || 'Anonim',
-      filename: filename,
-      cart_data: playlistData.cart || [],
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'filename' });
+    .upsert(payload, { onConflict: 'filename' });
+
+  if (error && error.message && (error.message.includes('ON CONFLICT') || error.code === '42P10')) {
+    const fallbackRes = await supabaseClient
+      .from('songlists')
+      .upsert(payload);
+    error = fallbackRes.error;
+  }
+
+  if (error && error.message && error.message.includes('upsert')) {
+    const insertRes = await supabaseClient
+      .from('songlists')
+      .insert(payload);
+    error = insertRes.error;
+  }
 
   if (error) {
     console.error('Gagal menyimpan playlist ke Database:', error);
