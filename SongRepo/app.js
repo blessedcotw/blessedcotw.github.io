@@ -3024,7 +3024,6 @@ async function loadCloudPlaylists() {
 
 async function deletePlaylistFromSupabase(filename) {
   if (!supabaseClient) throw new Error('Database belum terkonfigurasi.');
-  await ensureAdminHash();
 
   const { error } = await supabaseClient
     .from('songlists')
@@ -3047,6 +3046,15 @@ if (savePlaylistBtn) {
       return;
     }
 
+    // 1. Verifikasi Password Admin (diperlukan 1x per sesi browser)
+    try {
+      await ensureAdminHash();
+    } catch (authErr) {
+      showToast('Otentikasi admin dibatalkan.');
+      return;
+    }
+
+    // 2. Minta Nama Pembuat (Author)
     const lastAuthor = localStorage.getItem('song_repo_last_author') || '';
     const authorInput = await customPrompt('Masukkan nama Anda sebagai pembuat playlist (Author):', lastAuthor, 'Simpan Playlist', '✍️ Author Playlist');
     if (authorInput === null) return;
@@ -3056,15 +3064,6 @@ if (savePlaylistBtn) {
     const originalText = savePlaylistBtn.textContent;
     savePlaylistBtn.disabled = true;
     savePlaylistBtn.textContent = 'Menyimpan...';
-
-    try {
-      await ensureAdminHash();
-    } catch (authErr) {
-      showToast('Otentikasi admin dibatalkan: ' + authErr.message);
-      savePlaylistBtn.disabled = false;
-      savePlaylistBtn.textContent = originalText;
-      return;
-    }
 
     showSyncLoading('Menyimpan Playlist...', 'Menyimpan playlist ke cloud database');
 
@@ -3178,10 +3177,11 @@ if (openPlaylistModalBtn) {
             if (!sl) return;
             if (!await customConfirm(`Hapus playlist "${sl.eventName}" (${sl.author || 'Anonim'}) secara permanen?`, 'Hapus Playlist', '⚠️ Hapus Playlist')) return;
 
+            // Verifikasi Password Admin (diperlukan 1x per sesi browser)
             try {
               await ensureAdminHash();
             } catch (authErr) {
-              showToast('Otentikasi admin dibatalkan: ' + authErr.message);
+              showToast('Otentikasi admin dibatalkan.');
               return;
             }
 
