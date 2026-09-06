@@ -3042,6 +3042,15 @@ if (savePlaylistBtn) {
     savePlaylistBtn.disabled = true;
     savePlaylistBtn.textContent = 'Menyimpan...';
 
+    try {
+      await ensureAdminHash();
+    } catch (authErr) {
+      showToast('Otentikasi admin dibatalkan: ' + authErr.message);
+      savePlaylistBtn.disabled = false;
+      savePlaylistBtn.textContent = originalText;
+      return;
+    }
+
     showSyncLoading('Menyimpan Playlist...', 'Menyimpan playlist ke cloud database');
 
     try {
@@ -3153,6 +3162,13 @@ if (openPlaylistModalBtn) {
             const sl = list[Number(btn.dataset.idx)];
             if (!sl) return;
             if (!await customConfirm(`Hapus playlist "${sl.eventName}" (${sl.author || 'Anonim'}) secara permanen?`, 'Hapus Playlist', '⚠️ Hapus Playlist')) return;
+
+            try {
+              await ensureAdminHash();
+            } catch (authErr) {
+              showToast('Otentikasi admin dibatalkan: ' + authErr.message);
+              return;
+            }
 
             showSyncLoading('Menghapus Playlist...', 'Menghapus playlist dari database');
             try {
