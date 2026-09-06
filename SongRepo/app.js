@@ -2949,6 +2949,8 @@ async function ensureAdminHash() {
 
 async function savePlaylistToSupabase(playlistData) {
   if (!supabaseClient) throw new Error('Database belum terkonfigurasi.');
+  await ensureAdminHash();
+
   const sanitizedEvent = (playlistData.eventName || 'ibadah')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '_')
@@ -3007,6 +3009,8 @@ async function loadCloudPlaylists() {
 
 async function deletePlaylistFromSupabase(filename) {
   if (!supabaseClient) throw new Error('Database belum terkonfigurasi.');
+  await ensureAdminHash();
+
   const { error } = await supabaseClient
     .from('songlists')
     .delete()
