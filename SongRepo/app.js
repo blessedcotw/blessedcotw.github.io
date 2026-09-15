@@ -2949,6 +2949,7 @@ async function ensureAdminHash() {
 
 async function savePlaylistToSupabase(playlistData) {
   if (!supabaseClient) throw new Error('Database belum terkonfigurasi.');
+
   const sanitizedEvent = (playlistData.eventName || 'ibadah')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '_')
@@ -2956,16 +2957,32 @@ async function savePlaylistToSupabase(playlistData) {
   const dateStr = playlistData.eventDate || new Date().toISOString().slice(0, 10);
   const filename = `playlist_${dateStr}_${sanitizedEvent}_${playlistData.id.slice(0, 6)}.json`;
 
-  const { error } = await supabaseClient
+  const payload = {
+    event_name: playlistData.eventName,
+    event_date: playlistData.eventDate || null,
+    author: playlistData.author || 'Anonim',
+    filename: filename,
+    cart_data: playlistData.cart || [],
+    updated_at: new Date().toISOString()
+  };
+
+  let { error } = await supabaseClient
     .from('songlists')
-    .upsert({
-      event_name: playlistData.eventName,
-      event_date: playlistData.eventDate || null,
-      author: playlistData.author || 'Anonim',
-      filename: filename,
-      cart_data: playlistData.cart || [],
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'filename' });
+    .upsert(payload, { onConflict: 'filename' });
+
+  if (error && error.message && (error.message.includes('ON CONFLICT') || error.code === '42P10')) {
+    const fallbackRes = await supabaseClient
+      .from('songlists')
+      .upsert(payload);
+    error = fallbackRes.error;
+  }
+
+  if (error && error.message && error.message.includes('upsert')) {
+    const insertRes = await supabaseClient
+      .from('songlists')
+      .insert(payload);
+    error = insertRes.error;
+  }
 
   if (error) {
     console.error('Gagal menyimpan playlist ke Database:', error);
@@ -3007,6 +3024,7 @@ async function loadCloudPlaylists() {
 
 async function deletePlaylistFromSupabase(filename) {
   if (!supabaseClient) throw new Error('Database belum terkonfigurasi.');
+
   const { error } = await supabaseClient
     .from('songlists')
     .delete()
@@ -3028,6 +3046,15 @@ if (savePlaylistBtn) {
       return;
     }
 
+    // 1. Verifikasi Password Admin (diperlukan 1x per sesi browser)
+    try {
+      await ensureAdminHash();
+    } catch (authErr) {
+      showToast('Otentikasi admin dibatalkan.');
+      return;
+    }
+
+    // 2. Minta Nama Pembuat (Author)
     const lastAuthor = localStorage.getItem('song_repo_last_author') || '';
     const authorInput = await customPrompt('Masukkan nama Anda sebagai pembuat playlist (Author):', lastAuthor, 'Simpan Playlist', '✍️ Author Playlist');
     if (authorInput === null) return;
@@ -3149,6 +3176,14 @@ if (openPlaylistModalBtn) {
             const sl = list[Number(btn.dataset.idx)];
             if (!sl) return;
             if (!await customConfirm(`Hapus playlist "${sl.eventName}" (${sl.author || 'Anonim'}) secara permanen?`, 'Hapus Playlist', '⚠️ Hapus Playlist')) return;
+
+            // Verifikasi Password Admin (diperlukan 1x per sesi browser)
+            try {
+              await ensureAdminHash();
+            } catch (authErr) {
+              showToast('Otentikasi admin dibatalkan.');
+              return;
+            }
 
             showSyncLoading('Menghapus Playlist...', 'Menghapus playlist dari database');
             try {
