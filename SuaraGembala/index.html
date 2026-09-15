@@ -45,10 +45,14 @@
       <!-- Left Panel: Form & Controls stacked vertically -->
       <section class="control-panel">
 
-        <div class="card">
+        <div class="card" id="bgCard">
           <div class="card-header">
             <h3><i class="fa-solid fa-image"></i> Pilih Latar</h3>
             <div class="card-header-btns">
+              <button id="uploadBgBtn" class="btn-icon" title="Upload Foto Sendiri (Galeri/File)">
+                <i class="fa-solid fa-arrow-up-from-bracket"></i> Upload Foto
+              </button>
+              <input type="file" id="bgFileInput" accept="image/*" class="hidden-file-input">
               <button id="refreshBgBtn" class="btn-icon" title="Acak 10 Background Baru">
                 <i class="fa-solid fa-rotate"></i> Acak 10 Foto Baru
               </button>

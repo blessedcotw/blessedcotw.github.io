@@ -133,10 +133,27 @@ body {
   gap: 10px;
 }
 
+.hidden-file-input {
+  display: none !important;
+}
+
+.card.drag-over {
+  border-color: var(--accent-gold) !important;
+  background: rgba(245, 158, 11, 0.06) !important;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.25) !important;
+  transition: all 0.2s ease;
+}
+
+.canvas-wrapper.drag-over {
+  border: 2px dashed var(--accent-gold) !important;
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.35) !important;
+}
+
 .card-header-btns {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .card-header h3 {
@@ -161,6 +178,15 @@ body {
   .form-row {
     flex-direction: column;
     gap: 0;
+  }
+  .card-header-btns {
+    width: 100%;
+  }
+  .card-header-btns .btn-icon {
+    flex: 1 1 auto;
+    justify-content: center;
+    font-size: 0.8rem;
+    padding: 6px 8px;
   }
 }
 
@@ -285,6 +311,10 @@ textarea.form-control {
   justify-content: center;
   font-size: 9px;
   font-weight: bold;
+}
+
+.bg-thumb.user-custom {
+  border: 2px solid rgba(245, 158, 11, 0.4);
 }
 
 .bg-loading {

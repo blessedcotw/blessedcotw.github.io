@@ -25,6 +25,7 @@ const state = {
   bgOpacity: 0.25,
   selectedBgIndex: 0,
   bgImages: [],
+  customBg: null, // User-uploaded background image object
   loadedImages: {}, // Preloaded HTMLImageElements
   isFontsLoaded: false
 };
@@ -38,10 +39,14 @@ const refInput = document.getElementById('refInput');
 const reflectionInput = document.getElementById('reflectionInput');
 const opacityInput = document.getElementById('opacityInput');
 const opacityVal = document.getElementById('opacityVal');
+const bgCard = document.getElementById('bgCard');
 const bgGrid = document.getElementById('bgGrid');
+const uploadBgBtn = document.getElementById('uploadBgBtn');
+const bgFileInput = document.getElementById('bgFileInput');
 const refreshBgBtn = document.getElementById('refreshBgBtn');
 const searchBgBtn = document.getElementById('searchBgBtn');
 const downloadBtn = document.getElementById('downloadBtn');
+const canvasWrapper = document.querySelector('.canvas-wrapper');
 const canvas = document.getElementById('previewCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -233,23 +238,24 @@ function preloadStaticAssets() {
 const PEXELS_KEY_OBFUSCATED = "fJ8xBmvJV5CcQtpJVLj1TRroVOSAlHcjgxyb0vhKPtavYVnlE9NsQS6U";
 const getPexelsKey = () => atob(btoa(PEXELS_KEY_OBFUSCATED));
 
-// Load 10 Nature / Search Images following official Pexels API documentation
+// Load Nature / Search Images following official Pexels API documentation (10 images, or 9 if user uploaded custom photo)
 async function loadRandomNatureImages(customKeyword = '') {
   const isSearch = customKeyword.trim().length > 0;
   const searchTag = isSearch ? customKeyword.trim() : 'nature landscape';
+  const targetApiCount = state.customBg ? 9 : 10;
   const statusMsg = isSearch
-    ? `Memuat 10 foto untuk "${searchTag}"`
-    : 'Memuat 10 foto nature';
+    ? `Memuat ${targetApiCount} foto untuk "${searchTag}"`
+    : `Memuat ${targetApiCount} foto nature`;
 
   bgGrid.innerHTML = `<div class="bg-loading"><i class="fa-solid fa-spinner fa-spin"></i> ${statusMsg}</div>`;
-  state.bgImages = [];
+  state.bgImages = state.customBg ? [state.customBg] : [];
 
   try {
     // According to Pexels API Docs:
-    // GET /v1/search?query=...&orientation=portrait&per_page=10&page=...
+    // GET /v1/search?query=...&orientation=portrait&per_page=...&page=...
     // Header: Authorization: YOUR_API_KEY
     const randomPage = isSearch ? 1 : Math.floor(Math.random() * 20) + 1;
-    const endpoint = `https://api.pexels.com/v1/search?query=${encodeURIComponent(searchTag)}&orientation=portrait&per_page=10&page=${randomPage}`;
+    const endpoint = `https://api.pexels.com/v1/search?query=${encodeURIComponent(searchTag)}&orientation=portrait&per_page=${targetApiCount}&page=${randomPage}`;
 
     const response = await fetch(endpoint, {
       method: 'GET',
@@ -300,8 +306,15 @@ async function loadRandomNatureImages(customKeyword = '') {
     });
 
     const results = await Promise.all(imagePromises);
-    state.bgImages = results.filter(res => res.img !== null);
-    state.selectedBgIndex = 0;
+    const fetchedPhotos = results.filter(res => res.img !== null).slice(0, targetApiCount);
+
+    if (state.customBg) {
+      state.bgImages = [state.customBg, ...fetchedPhotos];
+    } else {
+      state.bgImages = fetchedPhotos;
+      state.selectedBgIndex = 0;
+    }
+
     renderBgThumbnails();
     drawCanvas();
 
@@ -316,12 +329,15 @@ function renderBgThumbnails() {
   bgGrid.innerHTML = '';
   state.bgImages.forEach((item, idx) => {
     const thumbDiv = document.createElement('div');
-    thumbDiv.className = `bg-thumb ${idx === state.selectedBgIndex ? 'active' : ''}`;
+    thumbDiv.className = `bg-thumb ${idx === state.selectedBgIndex ? 'active' : ''} ${item.isCustom ? 'user-custom' : ''}`;
+    thumbDiv.title = item.isCustom
+      ? `Foto Anda (${item.name || 'Upload'})`
+      : (item.photographer ? `Foto oleh ${item.photographer}` : `Nature Background ${idx + 1}`);
 
     if (item.img) {
       const imgElem = document.createElement('img');
       imgElem.src = item.url;
-      imgElem.alt = `Nature Background ${idx + 1}`;
+      imgElem.alt = item.isCustom ? 'Foto Anda' : `Nature Background ${idx + 1}`;
       thumbDiv.appendChild(imgElem);
     } else {
       thumbDiv.style.background = 'linear-gradient(135deg, #0284c7, #0f172a)';
@@ -337,6 +353,64 @@ function renderBgThumbnails() {
 
     bgGrid.appendChild(thumbDiv);
   });
+}
+
+// Handle User Uploaded Image (Cross-Platform: Desktop File Picker & Drag-Drop, iOS Safari & Android)
+function handleImageUpload(file) {
+  if (!file) return;
+
+  // Validate file type
+  const isImage = file.type ? file.type.startsWith('image/') : /\.(jpe?g|png|webp|gif|avif|heic|bmp)$/i.test(file.name);
+  if (!isImage) {
+    alert('Mohon pilih file gambar yang valid (JPG, PNG, WebP, dsb).');
+    return;
+  }
+
+  // Revoke previous blob URL if exists to free memory
+  if (state.customBg && state.customBg.url && state.customBg.url.startsWith('blob:')) {
+    try {
+      URL.revokeObjectURL(state.customBg.url);
+    } catch (e) {
+      console.warn('Could not revoke previous object URL', e);
+    }
+  }
+
+  const blobUrl = URL.createObjectURL(file);
+  const img = new Image();
+
+  img.onload = () => {
+    const customBgObj = {
+      img: img,
+      url: blobUrl,
+      isCustom: true,
+      name: file.name || 'Foto Anda'
+    };
+
+    state.customBg = customBgObj;
+
+    // Filter out any previous custom items, and keep at most 9 API photos so total is always exactly 10 (1 custom + 9 API)
+    const existingApiPhotos = state.bgImages.filter(item => !item.isCustom).slice(0, 9);
+    state.bgImages = [
+      customBgObj,
+      ...existingApiPhotos
+    ];
+
+    state.selectedBgIndex = 0;
+    renderBgThumbnails();
+    drawCanvas();
+
+    if (bgFileInput) bgFileInput.value = '';
+  };
+
+  img.onerror = () => {
+    try {
+      URL.revokeObjectURL(blobUrl);
+    } catch (e) {}
+    alert('Gagal memuat gambar yang diunggah. Pastikan format file didukung oleh peramban Anda.');
+    if (bgFileInput) bgFileInput.value = '';
+  };
+
+  img.src = blobUrl;
 }
 
 // Wrap Text Helper for Canvas
@@ -681,6 +755,49 @@ function setupEventListeners() {
     state.bgOpacity = e.target.value;
     opacityVal.textContent = `${Math.round(e.target.value * 100)}%`;
     drawCanvas();
+  });
+
+  // User Image Upload Event Handlers
+  if (uploadBgBtn && bgFileInput) {
+    uploadBgBtn.addEventListener('click', () => {
+      bgFileInput.click();
+    });
+
+    bgFileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        handleImageUpload(e.target.files[0]);
+      }
+    });
+  }
+
+  // Drag & Drop Handlers for Desktop & Tablet
+  const dropTargets = [bgCard, canvasWrapper].filter(Boolean);
+  dropTargets.forEach(target => {
+    ['dragenter', 'dragover'].forEach(eventName => {
+      target.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        target.classList.add('drag-over');
+      });
+    });
+
+    ['dragleave', 'dragend'].forEach(eventName => {
+      target.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        target.classList.remove('drag-over');
+      });
+    });
+
+    target.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      target.classList.remove('drag-over');
+      const dt = e.dataTransfer;
+      if (dt && dt.files && dt.files.length > 0) {
+        handleImageUpload(dt.files[0]);
+      }
+    });
   });
 
   refreshBgBtn.addEventListener('click', () => {
