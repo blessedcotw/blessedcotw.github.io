@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jadwal Ibadah — GPdI COTW Temanggung</title>
+  <meta name="description" content="Generator poster jadwal Ibadah Raya & Pendalaman Alkitab GPdI COTW Temanggung (Instagram Story / Status WhatsApp 1080x1920).">
+
+  <!-- OpenGraph Meta Tags -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Jadwal Ibadah — GPdI COTW Temanggung">
+  <meta property="og:description" content="Generator poster jadwal Ibadah Raya & Pendalaman Alkitab GPdI COTW Temanggung.">
+  <meta property="og:image" content="../og_preview.webp">
+  <meta property="og:url" content="https://blessedcotw.github.io/JadwalIbadah/">
+  <meta property="og:site_name" content="GPdI COTW Temanggung">
+  <meta property="og:locale" content="id_ID">
+
+  <link rel="icon" type="image/png" href="cotw_logo.png">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Great+Vibes&family=Montserrat:ital,wght@0,400..900;1,400..900&family=Playfair+Display:ital,wght@0,600..900;1,600..900&display=swap"
+    rel="stylesheet">
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div class="app-container">
+
+    <!-- Top Minimal Brand Header -->
+    <header class="app-header">
+      <div class="brand">
+        <img src="cotw_logo.png" alt="COTW Logo" class="brand-logo">
+        <div class="brand-text">
+          <span class="brand-title">Jadwal Ibadah</span>
+          <span class="brand-sub">GPdI Church on the Way Temanggung</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <!-- Left Panel: Controls & Inputs -->
+      <section class="control-panel">
+
+        <!-- Mode Selector: Ibadah Raya vs Pendalaman Alkitab -->
+        <div class="mode-tabs">
+          <button type="button" class="mode-tab active" id="modeRayaBtn" data-mode="raya">
+            <i class="fa-solid fa-church"></i> Ibadah Raya (Minggu)
+          </button>
+          <button type="button" class="mode-tab" id="modePABtn" data-mode="pa">
+            <i class="fa-solid fa-book-bible"></i> Pendalaman Alkitab (Rabu)
+          </button>
+        </div>
+
+        <!-- CARD 1: Background Upload & Dim -->
+        <div class="card" id="bgCard">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-image"></i> Latar Belakang</h3>
+          </div>
+
+          <div class="bg-action-row" style="display: flex; gap: 8px; margin-bottom: 14px;">
+            <button type="button" id="uploadBgBtn" class="btn btn-primary" style="flex: 1;">
+              <i class="fa-solid fa-upload"></i> Unggah Latar Baru
+            </button>
+            <input type="file" id="bgFileInput" accept="image/jpeg,image/png,image/webp" class="hidden-file-input">
+            <button type="button" id="refreshStorageBtn" class="btn btn-icon" title="Muat Ulang Latar">
+              <i class="fa-solid fa-arrows-rotate"></i>
+            </button>
+          </div>
+
+          <!-- Upload Status / Progress Banner -->
+          <div id="uploadStatusBanner" class="status-banner hidden">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <span id="uploadStatusText">Sedang memproses...</span>
+          </div>
+
+          <!-- Overlay Dim / Contrast Settings -->
+          <div class="overlay-settings">
+            <div class="slider-row">
+              <label for="dimOverlayInput">Dark Dim (Keredupan Latar): <strong id="dimVal">35%</strong></label>
+              <input type="range" id="dimOverlayInput" min="0" max="0.8" step="0.05" value="0.35" class="range-slider">
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 2: Date Selector -->
+        <div class="card">
+          <div class="card-header">
+            <h3><i class="fa-regular fa-calendar-days"></i> Hari & Tanggal Ibadah</h3>
+            <div class="card-header-btns">
+              <button type="button" id="btnNextSunday" class="btn btn-icon btn-xs" title="Lompat ke Jadwal Terdekat">
+                <i class="fa-solid fa-forward-step"></i> <span id="quickJumpBtnText">Minggu Terdekat</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="date-input-group">
+              <input type="text" id="dateDisplayText" class="form-control date-display" readonly
+                placeholder="Pilih Tanggal">
+              <input type="date" id="nativeDateInput" class="hidden-native-date">
+              <button type="button" id="triggerDateBtn" class="btn-icon calendar-btn" title="Pilih Tanggal">
+                <i class="fa-regular fa-calendar-days"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 3A: Ibadah Raya (3 Sesi) -->
+        <div class="card" id="cardServicesRaya">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-church"></i> 3 Sesi Ibadah Raya</h3>
+            <span class="badge-hint">Minggu Pagi, Siang, Sore</span>
+          </div>
+
+          <!-- Sesi 1: Minggu Pagi -->
+          <div class="service-box">
+            <div class="service-box-header">
+              <div class="service-badge pagi">
+                <i class="fa-solid fa-sun"></i> MINGGU PAGI (06.00 WIB)
+              </div>
+              <label class="toggle-switch" title="Aktifkan badge Live Streaming">
+                <input type="checkbox" id="streamToggle1" checked>
+                <span class="slider round"></span>
+                <span class="toggle-label"><i class="fa-solid fa-video"></i> Live Stream</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label for="themeInput1">Tema Ibadah Raya Minggu Pagi</label>
+              <textarea id="themeInput1" class="form-control theme-textarea" rows="2"
+                placeholder="TEMA IBADAH RAYA MINGGU PAGI"></textarea>
+            </div>
+          </div>
+
+          <!-- Sesi 2: Minggu Siang -->
+          <div class="service-box">
+            <div class="service-box-header">
+              <div class="service-badge siang">
+                <i class="fa-regular fa-sun"></i> MINGGU SIANG (10.00 WIB)
+              </div>
+              <label class="toggle-switch" title="Aktifkan badge Live Streaming">
+                <input type="checkbox" id="streamToggle2">
+                <span class="slider round"></span>
+                <span class="toggle-label"><i class="fa-solid fa-video"></i> Live Stream</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label for="themeInput2">Tema Ibadah Raya Minggu Siang</label>
+              <textarea id="themeInput2" class="form-control theme-textarea" rows="2"
+                placeholder="TEMA IBADAH RAYA MINGGU SIANG"></textarea>
+            </div>
+          </div>
+
+          <!-- Sesi 3: Minggu Sore -->
+          <div class="service-box">
+            <div class="service-box-header">
+              <div class="service-badge sore">
+                <i class="fa-solid fa-moon"></i> MINGGU SORE (18.00 WIB)
+              </div>
+              <label class="toggle-switch" title="Aktifkan badge Live Streaming">
+                <input type="checkbox" id="streamToggle3" checked>
+                <span class="slider round"></span>
+                <span class="toggle-label"><i class="fa-solid fa-video"></i> Live Stream</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label for="themeInput3">Tema Ibadah Raya Minggu Sore</label>
+              <textarea id="themeInput3" class="form-control theme-textarea" rows="2"
+                placeholder="TEMA IBADAH RAYA MINGGU SORE"></textarea>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- CARD 3B: Pendalaman Alkitab (Hanya 1 Sesi) -->
+        <div class="card hidden" id="cardServicesPA">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-book-bible"></i> Pendalaman Alkitab (Rabu)</h3>
+            <span class="badge-hint">18.00 WIB</span>
+          </div>
+
+          <div class="service-box">
+            <div class="service-box-header">
+              <div class="service-badge sore">
+                <i class="fa-solid fa-calendar-day"></i> RABU (PK. 18.00 WIB)
+              </div>
+              <label class="toggle-switch" title="Aktifkan badge Live Streaming">
+                <input type="checkbox" id="streamTogglePA" checked>
+                <span class="slider round"></span>
+                <span class="toggle-label"><i class="fa-solid fa-video"></i> Live Stream</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label for="themeInputPA">Tema Ibadah Pendalaman Alkitab</label>
+              <textarea id="themeInputPA" class="form-control theme-textarea" rows="3"
+                placeholder="TEMA IBADAH PENDALAMAN ALKITAB"></textarea>
+            </div>
+
+            <div class="form-group" style="margin-top: 14px; border-top: 1px solid rgba(51, 65, 85, 0.4); padding-top: 14px;">
+              <button type="button" id="copyStreamUrlBtnPA" class="btn btn-secondary btn-block" title="Salin URL Streaming">
+                <i class="fa-regular fa-copy"></i> Salin URL Streaming
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Right Panel: Live Canvas Preview -->
+      <section class="preview-panel">
+        <div class="canvas-card">
+          <div class="canvas-header-bar">
+            <div class="canvas-meta">
+              <span class="canvas-format-tag"><i class="fa-solid fa-mobile-screen"></i> Story (9:16)</span>
+              <span class="canvas-res-tag">1080 x 1920 px</span>
+            </div>
+          </div>
+
+          <div class="canvas-wrapper">
+            <canvas id="previewCanvas" width="1080" height="1920"></canvas>
+            <div id="canvasLoadingOverlay" class="canvas-loading-overlay hidden">
+              <i class="fa-solid fa-spinner fa-spin"></i>
+              <span>Memperbarui poster...</span>
+            </div>
+          </div>
+
+          <div class="canvas-controls">
+            <button id="downloadBtn" class="btn btn-primary btn-large">
+              <i class="fa-solid fa-download"></i> Download PNG HD
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
