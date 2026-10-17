@@ -388,13 +388,13 @@ function wrapText(context, text, maxWidth) {
  * Helper: Automatically calculate fitted font size and wrapped lines
  * for Theme text so it scales up or down depending on container space
  */
-function fitThemeText(context, text, maxW, maxH, initialFontSize = 44, minFontSize = 22) {
+function fitThemeText(context, text, maxW, maxH, initialFontSize = 58, minFontSize = 22, lineHeightMultiplier = 1.18) {
   let fontSize = initialFontSize;
   let bestFit = null;
 
   while (fontSize >= minFontSize) {
-    context.font = `800 ${fontSize}px "Playfair Display", "Cinzel", Georgia, serif`;
-    const lineHeight = Math.round(fontSize * 1.25);
+    context.font = `700 ${fontSize}px "Caladea", Georgia, serif`;
+    const lineHeight = Math.round(fontSize * lineHeightMultiplier);
     const lines = wrapText(context, text, maxW);
     const textHeight = lines.length * lineHeight;
 
@@ -408,8 +408,8 @@ function fitThemeText(context, text, maxW, maxH, initialFontSize = 44, minFontSi
   }
 
   if (!bestFit) {
-    context.font = `800 ${minFontSize}px "Playfair Display", "Cinzel", Georgia, serif`;
-    const lineHeight = Math.round(minFontSize * 1.25);
+    context.font = `700 ${minFontSize}px "Caladea", Georgia, serif`;
+    const lineHeight = Math.round(minFontSize * lineHeightMultiplier);
     const lines = wrapText(context, text, maxW);
     bestFit = { fontSize: minFontSize, lines, lineHeight, textHeight: lines.length * lineHeight };
   }
@@ -525,22 +525,9 @@ function drawCanvas() {
   ctx.textBaseline = 'alphabetic';
 
   if (state.mode === 'raya') {
-    // "Ibadah" (Script / Cursive in warm gold)
-    ctx.font = '400 135px "Great Vibes", cursive';
-    const ibadahGrad = ctx.createLinearGradient(0, 310, 0, 410);
-    ibadahGrad.addColorStop(0, '#fef08a');
-    ibadahGrad.addColorStop(0.5, '#f59e0b');
-    ibadahGrad.addColorStop(1, '#d97706');
-
-    ctx.fillStyle = ibadahGrad;
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-    ctx.shadowBlur = 18;
-    ctx.shadowOffsetY = 6;
-    ctx.fillText('Ibadah', width / 2, 360);
-
-    // "RAYA" (Grand Serif with Golden metallic gradient)
-    ctx.font = '900 148px "Cinzel", "Playfair Display", serif';
-    const rayaGrad = ctx.createLinearGradient(0, 400, 0, 490);
+    // 1. "RAYA" (Grand Serif rendered first as base layer)
+    ctx.font = '900 152px "Cinzel", "Playfair Display", serif';
+    const rayaGrad = ctx.createLinearGradient(0, 380, 0, 485);
     rayaGrad.addColorStop(0, '#ffffff');
     rayaGrad.addColorStop(0.25, '#fef3c7');
     rayaGrad.addColorStop(0.55, '#f59e0b');
@@ -552,6 +539,20 @@ function drawCanvas() {
     ctx.shadowBlur = 24;
     ctx.shadowOffsetY = 8;
     ctx.fillText('RAYA', width / 2, 480);
+
+    // 2. "Ibadah" (Script / Cursive rendered on top, positioned so only the tail of 'I' overlaps RAYA)
+    ctx.font = '400 138px "Great Vibes", cursive';
+    const ibadahGrad = ctx.createLinearGradient(0, 280, 0, 375);
+    ibadahGrad.addColorStop(0, '#fef9c3');
+    ibadahGrad.addColorStop(0.35, '#fde047');
+    ibadahGrad.addColorStop(0.7, '#f59e0b');
+    ibadahGrad.addColorStop(1, '#d97706');
+
+    ctx.fillStyle = ibadahGrad;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetY = 6;
+    ctx.fillText('Ibadah', width / 2, 355);
   } else {
     // "Pendalaman" (Script / Cursive in warm gold)
     ctx.font = '400 128px "Great Vibes", cursive';
@@ -684,7 +685,7 @@ function drawServiceRow(context, service, rowY, rowHeight, canvasW) {
   const leftColX = 90;
   // Reduced side whitespace & enlarged badge height
   const badgeW = 310;
-  const badgeH = 86;
+  const badgeH = 88;
 
   // Live image sizing - enlarged to match width of time badge above it
   const liveImgAspect = (state.liveImage && state.liveImage.width && state.liveImage.height)
@@ -715,15 +716,15 @@ function drawServiceRow(context, service, rowY, rowHeight, canvasW) {
   context.textAlign = 'center';
   context.textBaseline = 'middle';
 
-  // Service Name (Enlarged to 32px to reduce side whitespace!)
-  context.font = '900 32px "Montserrat", sans-serif';
+  // Service Name (Enlarged to 34px to reduce side whitespace!)
+  context.font = '900 34px "Montserrat", sans-serif';
   context.fillStyle = '#18181b';
-  context.fillText(service.name, leftColX + (badgeW / 2), leftStartY + 31);
+  context.fillText(service.name, leftColX + (badgeW / 2), leftStartY + 33);
 
-  // Service Time (Enlarged to 25px!)
-  context.font = '800 25px "Montserrat", sans-serif';
+  // Service Time (Enlarged to 26px!)
+  context.font = '800 26px "Montserrat", sans-serif';
   context.fillStyle = '#27272a';
-  context.fillText(service.time, leftColX + (badgeW / 2), leftStartY + 64);
+  context.fillText(service.time, leftColX + (badgeW / 2), leftStartY + 66);
 
   // 2. LIVE STREAMING BADGE (Enlarged to match time badge width!)
   if (service.live) {
@@ -752,37 +753,44 @@ function drawServiceRow(context, service, rowY, rowHeight, canvasW) {
   context.restore();
 
   // 4. Right Column: Theme & Auto-resizing
-  const rightColX = dividerX + 32;
-  const maxThemeW = canvasW - rightColX - 60;
-  const maxThemeH = rowHeight - 45;
+  // Safe clearance from divider (44px) so text never touches or crowds the divider
+  const rightColX = dividerX + 44;
+  const maxThemeW = canvasW - rightColX - 48;
+  const maxThemeH = rowHeight - 36;
 
   const themeRaw = (service.theme && service.theme.trim().length > 0 ? service.theme : service.fallbackTheme).toUpperCase();
-  const fitted = fitThemeText(context, themeRaw, maxThemeW, maxThemeH, 44, 22);
+  // Scaled ~90% (initial font size 58px)
+  const fitted = fitThemeText(context, themeRaw, maxThemeW, maxThemeH, 58, 22, 1.18);
 
-  const labelH = 26;
+  const labelH = 24;
   const labelGap = 8;
   const totalThemeBlockH = labelH + labelGap + fitted.textHeight;
   const themeStartY = rowY + (rowHeight - totalThemeBlockH) / 2;
 
-  // "TEMA" Label
+  // "TEMA" Label (Scaled ~90% to 23px)
+  context.save();
   context.textAlign = 'left';
   context.textBaseline = 'top';
-  context.font = '800 22px "Montserrat", sans-serif';
+  context.font = '800 23px "Montserrat", sans-serif';
+  context.letterSpacing = '2px';
   context.fillStyle = '#f59e0b';
   context.fillText('TEMA', rightColX, themeStartY);
+  context.restore();
 
-  // Auto-resized Theme Lines
-  context.font = `800 ${fitted.fontSize}px "Playfair Display", "Cinzel", Georgia, serif`;
+  // Auto-resized Theme Lines (Caladea Bold)
+  context.save();
+  context.textAlign = 'left';
+  context.textBaseline = 'top';
+  context.font = `700 ${fitted.fontSize}px "Caladea", Georgia, serif`;
   context.fillStyle = '#ffffff';
   context.shadowColor = 'rgba(0, 0, 0, 0.9)';
-  context.shadowBlur = 10;
+  context.shadowBlur = 8;
 
   const startLinesY = themeStartY + labelH + labelGap;
   fitted.lines.forEach((line, lineIdx) => {
     context.fillText(line, rightColX, startLinesY + (lineIdx * fitted.lineHeight));
   });
-
-  context.shadowBlur = 0;
+  context.restore();
 }
 
 /**
@@ -837,7 +845,7 @@ function drawPAServiceCentered(context, canvasW) {
   context.save();
   context.textAlign = 'center';
   context.textBaseline = 'top';
-  context.font = `800 ${fitted.fontSize}px "Playfair Display", "Cinzel", Georgia, serif`;
+  context.font = `700 ${fitted.fontSize}px "Caladea", Georgia, serif`;
   context.fillStyle = '#ffffff';
   context.shadowColor = 'rgba(0, 0, 0, 0.95)';
   context.shadowBlur = 20;
@@ -1080,34 +1088,84 @@ function roundRect(ctx, x, y, width, height, radius) {
 
 /**
  * Download High-Res PNG
+ * Cross-browser solution optimized for Safari (iOS & macOS), Firefox, and Chrome/Edge
  */
 function downloadPoster() {
   const modePrefix = state.mode === 'raya' ? 'Jadwal-Ibadah-Raya' : 'Jadwal-Pendalaman-Alkitab';
   const fileName = `${modePrefix}-COTW-${state.dateObj.toISOString().slice(0, 10)}.png`;
 
+  const isFirefox = /firefox|fxios/i.test(navigator.userAgent);
+
+  // 1. Firefox: Uses synchronous toDataURL directly in the user click event stack
+  // to avoid Firefox's async popup/download blocker.
+  if (isFirefox) {
+    try {
+      const dataUrl = canvas.toDataURL('image/png');
+      triggerDownload(dataUrl, fileName, false);
+      return;
+    } catch (err) {
+      console.warn('Firefox toDataURL failed, attempting toBlob fallback:', err);
+    }
+  }
+
+  // 2. Safari (iOS & macOS) and Chromium browsers:
+  // canvas.toBlob() is preferred because:
+  // - iOS Safari blocks programmatic download clicks on large raw data URLs (often opening them in a new tab instead)
+  // - Blob URLs trigger Safari's native "Do you want to download...?" file dialog
   if (canvas.toBlob) {
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        alert('Gagal menghasilkan file gambar.');
-        return;
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }, 'image/png');
+    try {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          fallbackToDataURL(fileName);
+          return;
+        }
+        const blobUrl = URL.createObjectURL(blob);
+        triggerDownload(blobUrl, fileName, true);
+      }, 'image/png');
+    } catch (err) {
+      console.warn('toBlob failed, falling back to toDataURL:', err);
+      fallbackToDataURL(fileName);
+    }
   } else {
-    const url = canvas.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    fallbackToDataURL(fileName);
+  }
+}
+
+function triggerDownload(url, fileName, isBlob = false) {
+  const a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+
+  setTimeout(() => {
+    if (a.parentNode) document.body.removeChild(a);
+    if (isBlob) URL.revokeObjectURL(url);
+  }, 2500);
+}
+
+function fallbackToDataURL(fileName) {
+  try {
+    const dataUrl = canvas.toDataURL('image/png');
+    triggerDownload(dataUrl, fileName, false);
+  } catch (err) {
+    handleDownloadError(err);
+  }
+}
+
+function handleDownloadError(err) {
+  console.error('Download error:', err);
+  const errMsg = String(err && err.message ? err.message : err);
+  if (errMsg.includes('SecurityError') || errMsg.includes('insecure')) {
+    alert(
+      'Browser memblokir akses canvas (SecurityError / Tainted Canvas).\n\n' +
+      'Penyebab umum:\n' +
+      '1. File dibuka langsung melalui protokol lokal (file:///...). Browser melarang ekspor canvas pada file lokal. Solusi: Buka via web server lokal (seperti Live Server/localhost) atau buka di GitHub Pages.\n' +
+      '2. Proteksi Canvas Fingerprinting aktif. Solusi: Izinkan izin ekstraksi canvas pada address bar browser.'
+    );
+  } else {
+    alert('Gagal mengunduh gambar: ' + errMsg);
   }
 }
 
@@ -1331,10 +1389,16 @@ async function initApp() {
   await loadActiveBackground();
 
   // Ensure fonts loaded before initial render
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(() => {
-      drawCanvas();
-    });
+  if (document.fonts) {
+    try {
+      await Promise.all([
+        document.fonts.load('700 44px "Caladea"'),
+        document.fonts.ready
+      ]);
+    } catch (e) {
+      console.warn('Font load warning', e);
+    }
+    drawCanvas();
   } else {
     drawCanvas();
   }
