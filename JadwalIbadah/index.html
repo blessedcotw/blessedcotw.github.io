@@ -49,13 +49,16 @@
       <!-- Left Panel: Controls & Inputs -->
       <section class="control-panel">
 
-        <!-- Mode Selector: Ibadah Raya vs Pendalaman Alkitab -->
+        <!-- Mode Selector: Ibadah Raya vs Pendalaman Alkitab vs Ibadah Lainnya -->
         <div class="mode-tabs">
           <button type="button" class="mode-tab active" id="modeRayaBtn" data-mode="raya">
-            <i class="fa-solid fa-church"></i> Ibadah Raya (Minggu)
+            <i class="fa-solid fa-church"></i> Ibadah Raya
           </button>
           <button type="button" class="mode-tab" id="modePABtn" data-mode="pa">
-            <i class="fa-solid fa-book-bible"></i> Pendalaman Alkitab (Rabu)
+            <i class="fa-solid fa-book-bible"></i> Pendalaman Alkitab
+          </button>
+          <button type="button" class="mode-tab" id="modeLainnyaBtn" data-mode="lainnya">
+            <i class="fa-solid fa-users"></i> Ibadah Lainnya
           </button>
         </div>
 
@@ -207,6 +210,71 @@
               <button type="button" id="copyStreamUrlBtnPA" class="btn btn-secondary btn-block" title="Salin URL Streaming">
                 <i class="fa-regular fa-copy"></i> Salin URL Streaming
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 3C: Ibadah Lainnya -->
+        <div class="card hidden" id="cardServicesLainnya">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-users"></i> Pengaturan Ibadah Lainnya</h3>
+            <span class="badge-hint">Latar Otomatis</span>
+          </div>
+
+          <div class="service-box">
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label for="ibadahPickerLainnya"><i class="fa-solid fa-list-check"></i> Jenis Ibadah</label>
+              <select id="ibadahPickerLainnya" class="form-control" style="font-weight: 700; font-size: 0.95rem; cursor: pointer;">
+                <option value="moi">Ibadah Man Of Integrity</option>
+                <option value="wanita">Ibadah Wanita</option>
+                <option value="goodfriends">Ibadah Goodfriends Community</option>
+                <option value="lansia">Ibadah Lansia</option>
+                <option value="doa">Doa Bersama</option>
+                <option value="custom">✏️ Ibadah Lainnya (Ketik Sendiri)...</option>
+              </select>
+              <div id="customIbadahGroup" class="hidden" style="margin-top: 10px;">
+                <label for="customIbadahInput" style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px; display: block;">
+                  <i class="fa-solid fa-pen-to-square"></i> Nama Ibadah
+                </label>
+                <input type="text" id="customIbadahInput" class="form-control" placeholder="Tuliskan nama ibadah..." value="" style="font-weight: 700;">
+              </div>
+            </div>
+
+            <!-- Form Group: Jam / Waktu Pelaksanaan (Native Dialog) -->
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label for="timeDisplayTextLainnya"><i class="fa-regular fa-clock"></i> Jam / Waktu Pelaksanaan</label>
+              <div class="date-input-group" id="timeInputGroupLainnya" style="cursor: pointer;" title="Klik untuk memilih jam">
+                <input type="text" id="timeDisplayTextLainnya" class="form-control date-display" readonly
+                  style="cursor: pointer;" placeholder="Pilih Jam" value="PUKUL 18.00 WIB">
+                <input type="time" id="nativeTimeInputLainnya" value="18:00"
+                  style="position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; border: none; padding: 0;">
+                <button type="button" id="triggerTimeBtnLainnya" class="btn-icon calendar-btn" title="Pilih Jam"
+                  style="pointer-events: auto; z-index: 2; cursor: pointer;">
+                  <i class="fa-regular fa-clock"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label for="locationInputLainnya"><i class="fa-solid fa-location-dot"></i> Lokasi Ibadah (Dapat dibuat 2 baris)</label>
+              <textarea id="locationInputLainnya" class="form-control" rows="2" style="font-weight: 600; resize: vertical;" placeholder="Lokasi Ibadah">Gedung Utama&#10;GPdI COTW Temanggung</textarea>
+            </div>
+
+            <div class="form-group" style="margin-top: 14px; border-top: 1px solid rgba(51, 65, 85, 0.4); padding-top: 14px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <label for="themeToggleLainnya" style="margin-bottom: 0; cursor: pointer; font-weight: 600;">
+                  <i class="fa-solid fa-heading"></i> Sertakan Tema Ibadah
+                </label>
+                <label class="toggle-switch" title="Aktifkan / nonaktifkan tema">
+                  <input type="checkbox" id="themeToggleLainnya">
+                  <span class="slider round"></span>
+                  <span class="toggle-label">Tema</span>
+                </label>
+              </div>
+              <div id="themeGroupLainnya" class="hidden" style="margin-top: 10px;">
+                <label for="themeInputLainnya">Tema Ibadah (Opsional)</label>
+                <textarea id="themeInputLainnya" class="form-control theme-textarea" rows="2" placeholder="TULISKAN TEMA IBADAH (OPSIONAL)"></textarea>
+              </div>
             </div>
           </div>
         </div>

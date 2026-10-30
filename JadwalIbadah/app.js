@@ -19,9 +19,49 @@ const MONTHS_ID = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
+// Preset Ibadah Lainnya
+const LAINNYA_PRESETS = {
+  moi: {
+    id: 'moi',
+    name: 'Ibadah Man Of Integrity',
+    bg: 'bg_moi.jpg',
+    defaultTime: 'PUKUL 18.00 WIB'
+  },
+  wanita: {
+    id: 'wanita',
+    name: 'Ibadah Wanita',
+    bg: 'bg_wanita.jpg',
+    defaultTime: 'PUKUL 16.00 WIB'
+  },
+  goodfriends: {
+    id: 'goodfriends',
+    name: 'Ibadah Goodfriends Community',
+    bg: 'bg_goodfriends.jpg',
+    defaultTime: 'PUKUL 18.30 WIB'
+  },
+  lansia: {
+    id: 'lansia',
+    name: 'Ibadah Lansia',
+    bg: 'bg_lansia.jpg',
+    defaultTime: 'PUKUL 10.00 WIB'
+  },
+  doa: {
+    id: 'doa',
+    name: 'Doa Bersama',
+    bg: 'bg_doa.jpg',
+    defaultTime: 'PUKUL 18.00 WIB'
+  },
+  custom: {
+    id: 'custom',
+    name: '',
+    bg: 'bg_default.jpg',
+    defaultTime: 'PUKUL 18.00 WIB'
+  }
+};
+
 // Application State
 const state = {
-  mode: 'raya', // 'raya' (Ibadah Raya Minggu) or 'pa' (Pendalaman Alkitab Rabu)
+  mode: 'raya', // 'raya' (Ibadah Raya Minggu), 'pa' (Pendalaman Alkitab), or 'lainnya'
   dateObj: new Date(),
   dateFormatted: '',
   services: [
@@ -57,6 +97,15 @@ const state = {
     fallbackTheme: 'TEMA IBADAH PENDALAMAN ALKITAB',
     live: true
   },
+  lainnyaService: {
+    selectedId: 'moi',
+    name: 'Ibadah Man Of Integrity',
+    time: 'PUKUL 18.00 WIB',
+    location: 'Gedung Utama\nGPdI COTW Temanggung',
+    showTheme: false,
+    theme: '',
+    fallbackTheme: 'TEMA'
+  },
   igHandle: '@gpdicotw_temanggung',
   ytChannel: 'GPdI COTW Temanggung',
   dimOverlay: 0.35,
@@ -82,8 +131,10 @@ const quickJumpBtnText = document.getElementById('quickJumpBtnText');
 // Mode Tab Elements
 const modeRayaBtn = document.getElementById('modeRayaBtn');
 const modePABtn = document.getElementById('modePABtn');
+const modeLainnyaBtn = document.getElementById('modeLainnyaBtn');
 const cardServicesRaya = document.getElementById('cardServicesRaya');
 const cardServicesPA = document.getElementById('cardServicesPA');
+const cardServicesLainnya = document.getElementById('cardServicesLainnya');
 
 // Raya Inputs
 const themeInput1 = document.getElementById('themeInput1');
@@ -99,7 +150,21 @@ const streamTogglePA = document.getElementById('streamTogglePA');
 const streamUrlInputPA = document.getElementById('streamUrlInputPA');
 const copyStreamUrlBtnPA = document.getElementById('copyStreamUrlBtnPA');
 
+// Lainnya Inputs
+const ibadahPickerLainnya = document.getElementById('ibadahPickerLainnya');
+const customIbadahGroup = document.getElementById('customIbadahGroup');
+const customIbadahInput = document.getElementById('customIbadahInput');
+const timeDisplayTextLainnya = document.getElementById('timeDisplayTextLainnya');
+const nativeTimeInputLainnya = document.getElementById('nativeTimeInputLainnya');
+const triggerTimeBtnLainnya = document.getElementById('triggerTimeBtnLainnya');
+const timeInputGroupLainnya = document.getElementById('timeInputGroupLainnya');
+const locationInputLainnya = document.getElementById('locationInputLainnya');
+const themeToggleLainnya = document.getElementById('themeToggleLainnya');
+const themeGroupLainnya = document.getElementById('themeGroupLainnya');
+const themeInputLainnya = document.getElementById('themeInputLainnya');
+
 // Background Controls
+const bgCard = document.getElementById('bgCard');
 const activeBgThumb = document.getElementById('activeBgThumb');
 const activeBgName = document.getElementById('activeBgName');
 const uploadBgBtn = document.getElementById('uploadBgBtn');
@@ -153,8 +218,87 @@ function getNearestWednesday(fromDate = new Date()) {
 }
 
 /**
- * Preload Local Images (COTW Logo, Live Badge webp, and Divider)
+ * Helper: Format time from picker "HH:MM" to "PUKUL HH.MM WIB"
  */
+function formatTimeFromPicker(hhmm) {
+  if (!hhmm) return 'PUKUL 18.00 WIB';
+  const parts = hhmm.split(':');
+  const h = (parts[0] || '18').padStart(2, '0');
+  const m = (parts[1] || '00').padStart(2, '0');
+  return `PUKUL ${h}.${m} WIB`;
+}
+
+/**
+ * Helper: Parse "PUKUL HH.MM WIB" or any time string to "HH:MM" for time input
+ */
+function parseTimeToPicker(text) {
+  if (!text) return '18:00';
+  const match = text.match(/(\d{1,2})[:.](\d{2})/);
+  if (match) {
+    return `${match[1].padStart(2, '0')}:${match[2]}`;
+  }
+  return '18:00';
+}
+
+/**
+ * Set and sync time for Ibadah Lainnya
+ */
+function setLainnyaTime(h, m, triggerRender = true) {
+  const hh = (h || '18').toString().padStart(2, '0');
+  const mm = (m || '00').toString().padStart(2, '0');
+  const formatted = `PUKUL ${hh}.${mm} WIB`;
+  state.lainnyaService.time = formatted;
+
+  if (timeDisplayTextLainnya) {
+    timeDisplayTextLainnya.value = formatted;
+  }
+  if (nativeTimeInputLainnya && nativeTimeInputLainnya.value !== `${hh}:${mm}`) {
+    nativeTimeInputLainnya.value = `${hh}:${mm}`;
+  }
+
+  if (triggerRender) {
+    drawCanvas();
+  }
+}
+
+/**
+ * Open native system time picker reliably without bugs
+ */
+function openNativeTimePicker() {
+  if (!nativeTimeInputLainnya) return;
+  if (typeof nativeTimeInputLainnya.showPicker === 'function') {
+    try {
+      nativeTimeInputLainnya.showPicker();
+      return;
+    } catch (e) {
+      console.warn('showPicker fallback', e);
+    }
+  }
+  nativeTimeInputLainnya.focus();
+}
+
+/**
+ * Preload Local Images (COTW Logo, Live Badge webp, Divider, and Lainnya Backgrounds)
+ */
+const lainnyaBgImages = {};
+function preloadLainnyaAssets() {
+  const promises = Object.keys(LAINNYA_PRESETS).map((key) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = LAINNYA_PRESETS[key].bg;
+      img.onload = () => {
+        lainnyaBgImages[key] = img;
+        resolve();
+      };
+      img.onerror = () => {
+        console.warn(`Failed to preload background: ${LAINNYA_PRESETS[key].bg}`);
+        resolve();
+      };
+    });
+  });
+  return Promise.all(promises);
+}
+
 function preloadLocalAssets() {
   const p1 = new Promise((resolve) => {
     const img = new Image();
@@ -189,7 +333,7 @@ function preloadLocalAssets() {
     img.onerror = resolve;
   });
 
-  return Promise.all([p1, p2, p3]);
+  return Promise.all([p1, p2, p3, preloadLainnyaAssets()]);
 }
 
 /**
@@ -429,8 +573,20 @@ function drawCanvas() {
   ctx.fillRect(0, 0, width, height);
 
   // 2. Draw Active Background Image (Cover-Fit)
-  if (state.activeBgImage) {
-    const img = state.activeBgImage;
+  let bgToDraw = null;
+  if (state.mode === 'lainnya') {
+    const preset = LAINNYA_PRESETS[state.lainnyaService.selectedId] || LAINNYA_PRESETS.moi;
+    bgToDraw = lainnyaBgImages[preset.id];
+    // Fallback gracefully jika background belum ada (misal bg_default.jpg belum diunggah)
+    if (!bgToDraw || !bgToDraw.complete || bgToDraw.naturalWidth === 0) {
+      bgToDraw = lainnyaBgImages['lansia'] || state.activeBgImage;
+    }
+  } else {
+    bgToDraw = state.activeBgImage;
+  }
+
+  if (bgToDraw && bgToDraw.complete && bgToDraw.naturalWidth > 0) {
+    const img = bgToDraw;
     const imgRatio = img.width / img.height;
     const canvasRatio = width / height;
 
@@ -451,9 +607,10 @@ function drawCanvas() {
     ctx.drawImage(img, drawX, drawY, drawW, drawH);
   }
 
-  // 3. Draw Dark Dim & Contrast Overlays
-  if (state.dimOverlay > 0) {
-    ctx.fillStyle = `rgba(0, 0, 0, ${state.dimOverlay})`;
+  // 3. Draw Dark Dim & Contrast Overlays (Pekatkan otomatis untuk Ibadah Lainnya)
+  const activeDim = state.mode === 'lainnya' ? 0.55 : state.dimOverlay;
+  if (activeDim > 0) {
+    ctx.fillStyle = `rgba(0, 0, 0, ${activeDim})`;
     ctx.fillRect(0, 0, width, height);
   }
 
@@ -553,7 +710,7 @@ function drawCanvas() {
     ctx.shadowBlur = 20;
     ctx.shadowOffsetY = 6;
     ctx.fillText('Ibadah', width / 2, 355);
-  } else {
+  } else if (state.mode === 'pa') {
     // "Pendalaman" (Script / Cursive in warm gold)
     ctx.font = '400 128px "Great Vibes", cursive';
     const paGrad = ctx.createLinearGradient(0, 310, 0, 410);
@@ -581,70 +738,78 @@ function drawCanvas() {
     ctx.shadowBlur = 24;
     ctx.shadowOffsetY = 8;
     ctx.fillText('ALKITAB', width / 2, 480);
+  } else {
+    // Ibadah Lainnya (Nama Ibadah Besar)
+    drawLainnyaHeading(ctx, width);
   }
 
   ctx.shadowBlur = 0;
   ctx.shadowOffsetY = 0;
 
   // -------------------------------------------------------------
-  // SECTION 3: DATE BADGE (Enlarged Size, with PUKUL 18.00 on PA)
+  // SECTION 3: DATE BADGE (Hanya untuk Ibadah Raya & Pendalaman Alkitab)
+  // Untuk Ibadah Lainnya, tanggal digambar pada drawLainnyaService
   // -------------------------------------------------------------
-  const isPA = state.mode === 'pa';
-  const dateBoxY = 535;
-  const dateBoxH = isPA ? 82 : 80;
-  const dateBoxW = isPA ? 920 : 820;
-  const dateBoxX = (width - dateBoxW) / 2;
+  if (state.mode !== 'lainnya') {
+    const isPA = state.mode === 'pa';
+    const dateBoxY = 535;
+    const dateBoxH = isPA ? 82 : 80;
+    const dateBoxW = isPA ? 920 : 820;
+    const dateBoxX = (width - dateBoxW) / 2;
 
-  ctx.save();
-  ctx.fillStyle = 'rgba(20, 10, 5, 0.72)';
-  ctx.strokeStyle = '#d97706';
-  ctx.lineWidth = 2.5;
+    ctx.save();
+    ctx.fillStyle = 'rgba(20, 10, 5, 0.72)';
+    ctx.strokeStyle = '#d97706';
+    ctx.lineWidth = 2.5;
 
-  roundRect(ctx, dateBoxX, dateBoxY, dateBoxW, dateBoxH, 18);
-  ctx.fill();
-  ctx.stroke();
+    roundRect(ctx, dateBoxX, dateBoxY, dateBoxW, dateBoxH, 18);
+    ctx.fill();
+    ctx.stroke();
 
-  // Subtle inner gold line
-  ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)';
-  ctx.lineWidth = 1;
-  roundRect(ctx, dateBoxX + 4, dateBoxY + 4, dateBoxW - 8, dateBoxH - 8, 14);
-  ctx.stroke();
-  ctx.restore();
+    // Subtle inner gold line
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)';
+    ctx.lineWidth = 1;
+    roundRect(ctx, dateBoxX + 4, dateBoxY + 4, dateBoxW - 8, dateBoxH - 8, 14);
+    ctx.stroke();
+    ctx.restore();
 
-  // Group Calendar Icon and Date Text so they are centered together
-  const dateFontSize = isPA ? 36 : 42;
-  ctx.save();
-  ctx.font = `800 ${dateFontSize}px "Montserrat", sans-serif`;
-  const textW = ctx.measureText(state.dateFormatted).width;
-  const iconSize = isPA ? 32 : 36;
-  const iconGap = 16;
-  const combinedW = iconSize + iconGap + textW;
+    // Group Calendar Icon and Date Text so they are centered together
+    const dateFontSize = isPA ? 36 : 42;
+    ctx.save();
+    ctx.font = `800 ${dateFontSize}px "Montserrat", sans-serif`;
+    const textW = ctx.measureText(state.dateFormatted).width;
+    const iconSize = isPA ? 32 : 36;
+    const iconGap = 16;
+    const combinedW = iconSize + iconGap + textW;
 
-  const groupStartX = (width - combinedW) / 2;
-  const iconCenterX = groupStartX + (iconSize / 2);
-  const textStartX = groupStartX + iconSize + iconGap;
-  const centerY = dateBoxY + (dateBoxH / 2);
+    const groupStartX = (width - combinedW) / 2;
+    const iconCenterX = groupStartX + (iconSize / 2);
+    const textStartX = groupStartX + iconSize + iconGap;
+    const centerY = dateBoxY + (dateBoxH / 2);
 
-  // Draw refined modern calendar icon
-  drawCalendarIcon(ctx, iconCenterX, centerY, iconSize);
+    // Draw refined modern calendar icon
+    drawCalendarIcon(ctx, iconCenterX, centerY, iconSize);
 
-  // Draw Date Text
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText(state.dateFormatted, textStartX, centerY);
-  ctx.restore();
+    // Draw Date Text
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(state.dateFormatted, textStartX, centerY);
+    ctx.restore();
 
-  // Decorative Golden Ribbon / Brush line below Date Badge
-  drawDecorativeLine(ctx, width / 2, dateBoxY + dateBoxH + 24, isPA ? 740 : 680);
+    // Decorative Golden Ribbon / Brush line below Date Badge
+    drawDecorativeLine(ctx, width / 2, dateBoxY + dateBoxH + 24, isPA ? 740 : 680);
+  }
 
   // -------------------------------------------------------------
   // SECTION 4: SERVICES SECTION
   // -------------------------------------------------------------
   if (state.mode === 'raya') {
     drawRayaServices(ctx, width);
-  } else {
+  } else if (state.mode === 'pa') {
     drawPAServiceCentered(ctx, width);
+  } else {
+    drawLainnyaService(ctx, width);
   }
 
   // -------------------------------------------------------------
@@ -652,7 +817,9 @@ function drawCanvas() {
   // -------------------------------------------------------------
   const footerStartY = 1590;
 
-  drawDecorativeLine(ctx, width / 2, footerStartY - 16, 520);
+  if (state.mode !== 'lainnya') {
+    drawDecorativeLine(ctx, width / 2, footerStartY - 16, 520);
+  }
   drawSocialStackedFooter(ctx, width / 2, footerStartY);
 }
 
@@ -866,6 +1033,306 @@ function drawPAServiceCentered(context, canvasW) {
     context.drawImage(state.liveImage, liveX, liveY, liveW, liveH);
     context.restore();
   }
+}
+
+/**
+ * Helper: Smart line breaker for grand serif words
+ * Splits long phrases like 'MAN OF INTEGRITY' or 'GOODFRIENDS COMMUNITY' into 2 balanced lines
+ */
+function splitSerifWords(text) {
+  if (!text) return [];
+  if (text.includes('\n')) {
+    return text.split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(s => s.length > 0);
+  }
+  const clean = text.trim().toUpperCase();
+  const words = clean.split(/\s+/);
+  if (words.length <= 1 || clean.length <= 10) {
+    return [clean];
+  }
+  let bestSplit = 1;
+  let bestDiff = 999;
+  for (let i = 1; i < words.length; i++) {
+    const l1 = words.slice(0, i).join(' ');
+    const l2 = words.slice(i).join(' ');
+    const diff = Math.abs(l1.length - l2.length);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestSplit = i;
+    }
+  }
+  return [words.slice(0, bestSplit).join(' '), words.slice(bestSplit).join(' ')];
+}
+
+/**
+ * Draw Heading for Ibadah Lainnya Mode
+ * Enlarged title with smart 2-line word wrapping for long names
+ */
+function drawLainnyaHeading(ctx, width) {
+  const service = state.lainnyaService;
+  const fullName = (service.name && service.name.trim().length > 0)
+    ? service.name.trim()
+    : (service.selectedId === 'custom' ? '' : 'Ibadah Lainnya');
+
+  let scriptWord = 'Ibadah';
+  let rawSerif = 'LAINNYA';
+
+  if (!fullName) {
+    scriptWord = 'Ibadah';
+    rawSerif = '';
+  } else if (fullName.toLowerCase() === 'ibadah') {
+    scriptWord = 'Ibadah';
+    rawSerif = '';
+  } else if (fullName.toLowerCase() === 'doa') {
+    scriptWord = 'Doa';
+    rawSerif = '';
+  } else if (fullName.toLowerCase().startsWith('ibadah ')) {
+    scriptWord = 'Ibadah';
+    rawSerif = fullName.slice(7).trim();
+  } else if (fullName.toLowerCase().startsWith('doa ')) {
+    scriptWord = 'Doa';
+    rawSerif = fullName.slice(4).trim();
+  } else {
+    // Jika tidak diawali kata Ibadah / Doa (misal: nama kustom):
+    // Otomatis script: "Ibadah", serif: nama kustom
+    scriptWord = 'Ibadah';
+    rawSerif = fullName.trim();
+  }
+
+  const serifLines = splitSerifWords(rawSerif);
+  const isTwoLines = serifLines.length > 1;
+
+  // Maximize font sizes
+  let serifFontSize = isTwoLines ? 120 : 155;
+  if (serifLines.length > 0) {
+    ctx.font = `900 ${serifFontSize}px "Cinzel", "Playfair Display", serif`;
+    while (serifFontSize > 50 && serifLines.some(line => ctx.measureText(line).width > 940)) {
+      serifFontSize -= 4;
+      ctx.font = `900 ${serifFontSize}px "Cinzel", "Playfair Display", serif`;
+    }
+  }
+
+  let scriptBaselineY = 425;
+  let serifBaselines = [];
+
+  if (serifLines.length === 0) {
+    scriptBaselineY = 480;
+  } else if (scriptWord) {
+    if (isTwoLines) {
+      scriptBaselineY = 380;
+      serifBaselines = [495, 495 + Math.round(serifFontSize * 1.05)];
+    } else {
+      scriptBaselineY = 425;
+      serifBaselines = [570];
+    }
+  } else {
+    if (isTwoLines) {
+      serifBaselines = [465, 465 + Math.round(serifFontSize * 1.08)];
+    } else {
+      serifBaselines = [510];
+    }
+  }
+
+  // Draw Serif Lines (Cinzel Grand Metallic Gradient per baris)
+  if (serifLines.length > 0 && serifBaselines.length > 0) {
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+    ctx.shadowBlur = 24;
+    ctx.shadowOffsetY = 8;
+
+    serifLines.forEach((line, idx) => {
+      const lineBaseline = serifBaselines[idx];
+      const lineTop = lineBaseline - (serifFontSize * 0.82);
+      const lineBtm = lineBaseline + (serifFontSize * 0.12);
+
+      const lineGrad = ctx.createLinearGradient(0, lineTop, 0, lineBtm);
+      lineGrad.addColorStop(0, '#ffffff');
+      lineGrad.addColorStop(0.25, '#fef3c7');
+      lineGrad.addColorStop(0.55, '#f59e0b');
+      lineGrad.addColorStop(0.85, '#d97706');
+      lineGrad.addColorStop(1, '#92400e');
+
+      ctx.fillStyle = lineGrad;
+      ctx.fillText(line, width / 2, lineBaseline);
+    });
+  }
+
+  // Draw Script Word ("Ibadah" / "Doa")
+  if (scriptWord) {
+    const scriptFontSize = serifLines.length === 0 ? 165 : (isTwoLines ? 145 : 155);
+    ctx.font = `400 ${scriptFontSize}px "Great Vibes", cursive`;
+    const ibadahGrad = ctx.createLinearGradient(0, scriptBaselineY - (scriptFontSize * 0.7), 0, scriptBaselineY + 15);
+    ibadahGrad.addColorStop(0, '#fef9c3');
+    ibadahGrad.addColorStop(0.35, '#fde047');
+    ibadahGrad.addColorStop(0.7, '#f59e0b');
+    ibadahGrad.addColorStop(1, '#d97706');
+
+    ctx.fillStyle = ibadahGrad;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetY = 6;
+    ctx.fillText(scriptWord, width / 2, scriptBaselineY);
+  }
+}
+
+/**
+ * Draw Service Details for Ibadah Lainnya Mode
+ * - JUMAT,
+ * - DD MMMM YYYY
+ * - PUKUL HH.MM (All 3 lines share the exact same maximized font size)
+ * - Location: supports line breaks (\n) and auto-splits 2 lines, maximized size
+ */
+function drawLainnyaService(context, canvasW) {
+  const service = state.lainnyaService;
+  const fullName = (service.name && service.name.trim().length > 0)
+    ? service.name.trim()
+    : (service.selectedId === 'custom' ? '' : 'Ibadah Lainnya');
+  const rawSerif = fullName.toLowerCase().startsWith('ibadah ')
+    ? fullName.slice(7).trim()
+    : (fullName.toLowerCase().startsWith('doa ') ? fullName.slice(4).trim() : (fullName.toLowerCase() === 'ibadah' || fullName.toLowerCase() === 'doa' ? '' : fullName.trim()));
+  const serifLines = splitSerifWords(rawSerif);
+  const titleBottomY = serifLines.length > 1 ? 620 : (serifLines.length === 1 ? 575 : 510);
+
+  const hasTheme = Boolean(service.showTheme && ((service.theme && service.theme.trim().length > 0) || service.fallbackTheme));
+
+  let themeBottom = titleBottomY;
+
+  // 1. Optional Theme
+  if (hasTheme) {
+    const themeRaw = (service.theme && service.theme.trim().length > 0 ? service.theme : (service.fallbackTheme || 'TEMA')).toUpperCase();
+    const maxThemeW = 920;
+    const maxThemeH = 260;
+    const fitted = fitThemeText(context, themeRaw, maxThemeW, maxThemeH, 64, 30, 1.25);
+
+    // Spacing lega antara nama ibadah dan tema (+165px)
+    const themeCenterY = titleBottomY + 165;
+    const totalThemeH = (fitted.lines.length - 1) * fitted.lineHeight + fitted.fontSize;
+    const startLinesY = themeCenterY - (totalThemeH / 2) + (fitted.fontSize / 2);
+
+    context.save();
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.font = `700 ${fitted.fontSize}px "Caladea", "Playfair Display", Georgia, serif`;
+    context.fillStyle = '#ffffff';
+    context.shadowColor = 'rgba(0, 0, 0, 0.95)';
+    context.shadowBlur = 18;
+    context.shadowOffsetY = 4;
+
+    fitted.lines.forEach((line, lineIdx) => {
+      context.fillText(line, canvasW / 2, startLinesY + (lineIdx * fitted.lineHeight));
+    });
+    context.restore();
+
+    themeBottom = themeCenterY + (totalThemeH / 2);
+  }
+
+  // 2. Parse Date & Time Components
+  let dayText = 'JUMAT,';
+  let dateText = '30 OKTOBER 2026';
+
+  if (state.dateFormatted && state.dateFormatted.includes(',')) {
+    const parts = state.dateFormatted.split(',');
+    dayText = parts[0].trim().toUpperCase() + ',';
+    dateText = parts.slice(1).join(',').trim().toUpperCase();
+  } else if (state.dateObj && !isNaN(state.dateObj.getTime())) {
+    dayText = DAYS_ID[state.dateObj.getDay()].toUpperCase() + ',';
+    dateText = `${state.dateObj.getDate()} ${MONTHS_ID[state.dateObj.getMonth()].toUpperCase()} ${state.dateObj.getFullYear()}`;
+  }
+
+  const timeText = (service.time && service.time.trim().length > 0 ? service.time : 'PUKUL 10.00 WIB').toUpperCase();
+
+  // 3. Maximized Schedule Font Size (All 3 lines share the exact same size)
+  let schedFontSize = 70;
+  context.font = `900 ${schedFontSize}px "Montserrat", sans-serif`;
+  const maxSchedW = 940;
+
+  while (
+    schedFontSize > 44 &&
+    (
+      context.measureText(dayText).width > maxSchedW ||
+      context.measureText(dateText).width > maxSchedW ||
+      context.measureText(timeText).width > maxSchedW
+    )
+  ) {
+    schedFontSize -= 2;
+    context.font = `900 ${schedFontSize}px "Montserrat", sans-serif`;
+  }
+
+  const schedStep = Math.round(schedFontSize * 1.24);
+  // Spacing lega antara tema dan tanggal (+145px)
+  const schedStartY = hasTheme
+    ? (themeBottom + 145)
+    : (titleBottomY + 190);
+
+  const line1CenterY = schedStartY;
+  const line2CenterY = schedStartY + schedStep;
+  const line3CenterY = schedStartY + (schedStep * 2);
+
+  context.save();
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.shadowColor = 'rgba(0, 0, 0, 0.95)';
+  context.shadowBlur = 18;
+  context.shadowOffsetY = 4;
+
+  // Line 1: Day (Kuning, Tanpa Icon Kalender)
+  context.font = `900 ${schedFontSize}px "Montserrat", sans-serif`;
+  context.fillStyle = '#fbbf24';
+  context.fillText(dayText, canvasW / 2, line1CenterY);
+
+  // Line 2: Date Month Year (Kuning)
+  context.fillText(dateText, canvasW / 2, line2CenterY);
+
+  // Line 3: Time (PUKUL HH.MM) (Putih, ketebalan font dikurangi ke 700)
+  context.font = `700 ${schedFontSize}px "Montserrat", sans-serif`;
+  context.fillStyle = '#ffffff';
+  context.fillText(timeText, canvasW / 2, line3CenterY);
+  context.restore();
+
+  // Divider antara Jam dan Lokasi
+  const dividerY = line3CenterY + (hasTheme ? 60 : 72);
+  drawDecorativeLine(context, canvasW / 2, dividerY, 520);
+
+  // 4. Location: Parse Line Breaks & Maximize Size
+  let locLines = [];
+  const rawLoc = (service.location && service.location.trim().length > 0)
+    ? service.location.trim()
+    : 'Gedung Utama\nGPdI COTW Temanggung';
+
+  if (rawLoc.includes('\n')) {
+    locLines = rawLoc.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  } else if (rawLoc.toLowerCase().startsWith('gedung utama ') && rawLoc.length > 18) {
+    locLines = ['Gedung Utama', rawLoc.slice(12).trim()];
+  } else {
+    locLines = [rawLoc];
+  }
+
+  let locFontSize = locLines.length > 1 ? 52 : 46;
+  context.font = `800 ${locFontSize}px "Montserrat", sans-serif`;
+  const maxLocW = 940;
+
+  while (
+    locFontSize > 28 &&
+    locLines.some(l => context.measureText(l).width > maxLocW)
+  ) {
+    locFontSize -= 2;
+    context.font = `800 ${locFontSize}px "Montserrat", sans-serif`;
+  }
+
+  const locStep = Math.round(locFontSize * 1.25);
+  const locStartY = dividerY + (hasTheme ? 60 : 72);
+
+  context.save();
+  context.font = `800 ${locFontSize}px "Montserrat", sans-serif`;
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillStyle = '#ffffff';
+  context.shadowColor = 'rgba(0, 0, 0, 0.95)';
+  context.shadowBlur = 16;
+  context.shadowOffsetY = 3;
+
+  locLines.forEach((line, idx) => {
+    context.fillText(line, canvasW / 2, locStartY + (idx * locStep));
+  });
+  context.restore();
 }
 
 /**
@@ -1091,7 +1558,13 @@ function roundRect(ctx, x, y, width, height, radius) {
  * Cross-browser solution optimized for Safari (iOS & macOS), Firefox, and Chrome/Edge
  */
 function downloadPoster() {
-  const modePrefix = state.mode === 'raya' ? 'Jadwal-Ibadah-Raya' : 'Jadwal-Pendalaman-Alkitab';
+  let modePrefix = 'Jadwal-Ibadah-Raya';
+  if (state.mode === 'pa') {
+    modePrefix = 'Jadwal-Pendalaman-Alkitab';
+  } else if (state.mode === 'lainnya') {
+    const cleanName = (state.lainnyaService.name || 'Ibadah-Lainnya').replace(/\s+/g, '-');
+    modePrefix = `Jadwal-${cleanName}`;
+  }
   const fileName = `${modePrefix}-COTW-${state.dateObj.toISOString().slice(0, 10)}.png`;
 
   const isFirefox = /firefox|fxios/i.test(navigator.userAgent);
@@ -1177,9 +1650,14 @@ function setAppMode(newMode) {
 
   modeRayaBtn.classList.toggle('active', newMode === 'raya');
   modePABtn.classList.toggle('active', newMode === 'pa');
+  modeLainnyaBtn.classList.toggle('active', newMode === 'lainnya');
 
   cardServicesRaya.classList.toggle('hidden', newMode !== 'raya');
   cardServicesPA.classList.toggle('hidden', newMode !== 'pa');
+  cardServicesLainnya.classList.toggle('hidden', newMode !== 'lainnya');
+
+  // Matikan unggah latar pada mode ibadah lainnya
+  bgCard.classList.toggle('hidden', newMode === 'lainnya');
 
   if (newMode === 'raya') {
     quickJumpBtnText.textContent = 'Minggu Terdekat';
@@ -1188,13 +1666,20 @@ function setAppMode(newMode) {
     state.dateFormatted = formatIndonesianDate(nearestSun, 'raya');
     dateDisplayText.value = state.dateFormatted;
     nativeDateInput.value = nearestSun.toISOString().slice(0, 10);
-  } else {
+  } else if (newMode === 'pa') {
     quickJumpBtnText.textContent = 'Rabu Terdekat';
     const nearestWed = getNearestWednesday();
     state.dateObj = nearestWed;
     state.dateFormatted = formatIndonesianDate(nearestWed, 'pa');
     dateDisplayText.value = state.dateFormatted;
     nativeDateInput.value = nearestWed.toISOString().slice(0, 10);
+  } else if (newMode === 'lainnya') {
+    quickJumpBtnText.textContent = 'Hari Ini';
+    const today = new Date();
+    state.dateObj = today;
+    state.dateFormatted = formatIndonesianDate(today, 'lainnya');
+    dateDisplayText.value = state.dateFormatted;
+    nativeDateInput.value = today.toISOString().slice(0, 10);
   }
 
   drawCanvas();
@@ -1207,6 +1692,89 @@ function bindEvents() {
   // Mode Tabs
   modeRayaBtn.addEventListener('click', () => setAppMode('raya'));
   modePABtn.addEventListener('click', () => setAppMode('pa'));
+  modeLainnyaBtn.addEventListener('click', () => setAppMode('lainnya'));
+
+  // Lainnya Inputs
+  ibadahPickerLainnya.addEventListener('change', (e) => {
+    const val = e.target.value;
+    const isCustom = val === 'custom';
+    if (customIbadahGroup) {
+      customIbadahGroup.classList.toggle('hidden', !isCustom);
+    }
+
+    if (isCustom) {
+      state.lainnyaService.selectedId = 'custom';
+      const customVal = customIbadahInput ? customIbadahInput.value.trim() : '';
+      state.lainnyaService.name = customVal;
+      setLainnyaTime('18', '00', false);
+      if (customIbadahInput) customIbadahInput.focus();
+      drawCanvas();
+    } else {
+      const preset = LAINNYA_PRESETS[val];
+      if (preset) {
+        state.lainnyaService.selectedId = preset.id;
+        state.lainnyaService.name = preset.name;
+        const parsed = parseTimeToPicker(preset.defaultTime).split(':');
+        setLainnyaTime(parsed[0], parsed[1], false);
+        drawCanvas();
+      }
+    }
+  });
+
+  if (customIbadahInput) {
+    customIbadahInput.addEventListener('input', (e) => {
+      state.lainnyaService.name = e.target.value.trim();
+      drawCanvas();
+    });
+  }
+
+  // Native Time Picker events (100% bug-free triggers)
+  if (timeDisplayTextLainnya) {
+    timeDisplayTextLainnya.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openNativeTimePicker();
+    });
+  }
+
+  if (triggerTimeBtnLainnya) {
+    triggerTimeBtnLainnya.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openNativeTimePicker();
+    });
+  }
+
+  if (timeInputGroupLainnya) {
+    timeInputGroupLainnya.addEventListener('click', () => {
+      openNativeTimePicker();
+    });
+  }
+
+  if (nativeTimeInputLainnya) {
+    const onTimeChange = (e) => {
+      if (e.target.value) {
+        const parts = e.target.value.split(':');
+        setLainnyaTime(parts[0], parts[1]);
+      }
+    };
+    nativeTimeInputLainnya.addEventListener('change', onTimeChange);
+    nativeTimeInputLainnya.addEventListener('input', onTimeChange);
+  }
+
+  locationInputLainnya.addEventListener('input', (e) => {
+    state.lainnyaService.location = e.target.value;
+    drawCanvas();
+  });
+
+  themeToggleLainnya.addEventListener('change', (e) => {
+    state.lainnyaService.showTheme = e.target.checked;
+    themeGroupLainnya.classList.toggle('hidden', !e.target.checked);
+    drawCanvas();
+  });
+
+  themeInputLainnya.addEventListener('input', (e) => {
+    state.lainnyaService.theme = e.target.value;
+    drawCanvas();
+  });
 
   // Date Sync
   nativeDateInput.addEventListener('change', (e) => {
@@ -1240,12 +1808,18 @@ function bindEvents() {
       state.dateFormatted = formatIndonesianDate(targetDay, 'raya');
       dateDisplayText.value = state.dateFormatted;
       nativeDateInput.value = targetDay.toISOString().slice(0, 10);
-    } else {
+    } else if (state.mode === 'pa') {
       const targetDay = getNearestWednesday();
       state.dateObj = targetDay;
       state.dateFormatted = formatIndonesianDate(targetDay, 'pa');
       dateDisplayText.value = state.dateFormatted;
       nativeDateInput.value = targetDay.toISOString().slice(0, 10);
+    } else {
+      const today = new Date();
+      state.dateObj = today;
+      state.dateFormatted = formatIndonesianDate(today, 'lainnya');
+      dateDisplayText.value = state.dateFormatted;
+      nativeDateInput.value = today.toISOString().slice(0, 10);
     }
     drawCanvas();
   });
@@ -1381,6 +1955,15 @@ async function initApp() {
 
   themeInputPA.value = state.paService.theme;
   streamTogglePA.checked = state.paService.live;
+
+  // Lainnya default inputs
+  ibadahPickerLainnya.value = state.lainnyaService.selectedId;
+  const initParsed = parseTimeToPicker(state.lainnyaService.time).split(':');
+  setLainnyaTime(initParsed[0], initParsed[1], false);
+  locationInputLainnya.value = state.lainnyaService.location;
+  themeToggleLainnya.checked = state.lainnyaService.showTheme;
+  themeInputLainnya.value = state.lainnyaService.theme;
+  themeGroupLainnya.classList.toggle('hidden', !state.lainnyaService.showTheme);
 
   bindEvents();
 
