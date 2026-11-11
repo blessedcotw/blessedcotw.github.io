@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <title>Mengalihkan...</title>
+  <script>
+    var target = "https://blessedcotw.pages.dev" + window.location.pathname + window.location.search + window.location.hash;
+    window.location.replace(target);
+  </script>
+</head>
+<body>
+  <p>Mengalihkan ke <a id="link" href="https://blessedcotw.pages.dev">blessedcotw.pages.dev</a>...</p>
+  <script>
+    document.getElementById("link").href = target;
+  </script>
+</body>
+</html>
